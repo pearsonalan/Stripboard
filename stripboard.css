@@ -1,0 +1,42 @@
+svg.stripboard g.background {
+    transform: translate(20px, 20px);
+}
+
+svg.stripboard g.background > rect {
+    /* fill: #f7e2bc; */
+    fill: #788f26;
+}
+
+svg.stripboard g.rulers g.horizontal-ruler {
+    transform: translate(20px, 0);
+}
+
+svg.stripboard g.rulers g.vertical-ruler {
+    transform: translate(0, 20px);
+}
+
+svg.stripboard g.rulers path {
+    stroke: black;
+    stroke-width: 2.0;
+}
+
+svg.stripboard g.strip > rect {
+    fill: gold;
+}
+
+svg.stripboard g.strip g.holes > circle {
+    fill: black;
+}
+
+svg.stripboard g.wires {
+    transform: translate(20px, 20px);
+}
+
+svg.stripboard g.wires g.wire > circle {
+    fill: blue;
+}
+
+svg.stripboard g.wires g.wire > path {
+    stroke: blue;
+    stroke-width: 4.0;
+}
