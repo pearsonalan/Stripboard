@@ -20,6 +20,10 @@ svg.stripboard g.rulers path {
     stroke-width: 2.0;
 }
 
+/*********************************************
+* Stripboard strips
+*/
+
 svg.stripboard g.strip > rect {
     fill: gold;
 }
@@ -28,15 +32,117 @@ svg.stripboard g.strip g.holes > circle {
     fill: black;
 }
 
+svg.stripboard g.strip g.cuts > path {
+    stroke: darkred;
+    stroke-width: 7.0;
+    opacity: 0.8;
+}
+
+/**********************************************
+* Wires
+*/
+
 svg.stripboard g.wires {
     transform: translate(20px, 20px);
 }
 
 svg.stripboard g.wires g.wire > circle {
     fill: blue;
+    stroke: blue;
+    stroke-width: 2;
 }
 
 svg.stripboard g.wires g.wire > path {
     stroke: blue;
     stroke-width: 4.0;
+}
+
+
+/**********************************************
+* Components
+*/
+
+svg.stripboard g.components {
+    transform: translate(20px, 20px);
+}
+
+
+/**********************************************
+* capacitors
+*/
+
+svg.stripboard g.components g.capacitor > circle {
+    fill: green;
+    stroke: green;
+    stroke-width: 2;
+}
+
+svg.stripboard g.components g.capacitor > path.wire {
+    stroke: gray;
+    stroke-width: 5.0;
+    stroke-linecap: round;
+}
+
+svg.stripboard g.components g.capacitor > path.capacitor-body {
+    stroke: orange;
+    stroke-width: 13.0;
+    stroke-linecap: round;
+}
+
+
+/**********************************************
+* LEDs
+*/
+
+svg.stripboard g.components g.led > circle {
+    fill: green;
+    stroke: green;
+    stroke-width: 2;
+}
+
+svg.stripboard g.components g.led > path.wire {
+    stroke: gray;
+    stroke-width: 5.0;
+    stroke-linecap: round;
+}
+
+svg.stripboard g.components g.led > circle.led-body {
+    fill: red;
+    stroke: darkred;
+    opacity: 0.7;
+    stroke-width: 6;
+}
+
+/**********************************************
+* Header
+*/
+
+svg.stripboard g.components g.header > path {
+    stroke: #444444;
+    opacity: 0.7;
+    stroke-width: 12.0;
+    stroke-linecap: square;
+}
+
+
+/**********************************************
+* Resistors
+*/
+
+svg.stripboard g.components g.resistor > circle {
+    fill: green;
+    stroke: green;
+    stroke-width: 2;
+}
+
+svg.stripboard g.components g.resistor > path.wire {
+    stroke: gray;
+    stroke-width: 5.0;
+    stroke-linecap: round;
+}
+
+svg.stripboard g.components g.resistor > path.resistor-body {
+    stroke: slateblue;
+    stroke-width: 12.0;
+    stroke-linecap: round;
 }

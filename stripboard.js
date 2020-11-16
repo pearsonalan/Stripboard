@@ -61,12 +61,12 @@ var Stripboard = (function() {
     }
 
     // Units: inches
-    function svgPath(x1, y1, x2, y2, style) {
+    function svgPath(x1, y1, x2, y2, classname) {
         let path = svgElement("path");
         let commands = moveAbs(x1, y1) + lineAbs(x2, y2);
         path.setAttribute("d", commands);
-        if (style !== undefined) {
-            path.setAttribute("style", style);
+        if (classname !== undefined) {
+            path.setAttribute("class", classname);
         }
         return path;
     }
@@ -94,11 +94,14 @@ var Stripboard = (function() {
     }
 
     // Units: inches
-    function svgCircle(x, y, radius) {
+    function svgCircle(x, y, radius, classname) {
         let circle = svgElement("circle");
         circle.setAttribute("cx", toPixels(x));
         circle.setAttribute("cy", toPixels(y));
         circle.setAttribute("r", toPixels(radius));
+        if (classname !== undefined) {
+            circle.setAttribute("class", classname);
+        }
         return circle;
     }
 
@@ -148,36 +151,6 @@ var Stripboard = (function() {
         return group;
     }
 
-    let WirePrototype = {
-        makeSvg: function() {
-            let group = svgGroup("wire");
-            let fromPos = this.fromStrip().holePos(this.from.hole);
-            let toPos = this.toStrip().holePos(this.to.hole);
-            console.log("Wire from ", fromPos, toPos);
-            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
-            group.appendChild(path);
-            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
-            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
-            return group;
-        },
-        fromStrip: function() {
-            return getStrip(this.from);
-        },
-        toStrip: function() {
-            return getStrip(this.to);
-        }
-    };
-    
-    function createWire(spec) {
-        let fromRef = parseRef(spec.from);
-        let toRef = parseRef(spec.to);
-        return extend(Object.create(WirePrototype), {
-            from: fromRef,
-            to: toRef,
-            spec: spec
-        });
-    }
-
     const kStripSize = 0.1;
     const kStripWidth = 0.07, kStripPadding = (kStripSize - kStripWidth) / 2.0;
     const kHoleRadius = 0.02;
@@ -188,6 +161,7 @@ var Stripboard = (function() {
     let boardHeight = 0;
     let strips = {};
     let wires = [];
+    let components = [];
     let stripCount = 0;
     let holeCount = 0;
 
@@ -221,9 +195,6 @@ var Stripboard = (function() {
     }
     
     let StripPrototype = {
-        log: function() {
-            console.log(this);
-        },
         addCut: function(cut) {
             this.cuts.push(cut);
         },
@@ -244,7 +215,12 @@ var Stripboard = (function() {
             }
             group.appendChild(holesGroup);
             if (this.cuts.length > 0) {
-                let cutssGroup = svgGroup("cuts");
+                let cutsGroup = svgGroup("cuts");
+                for (const cut of this.cuts) {
+                    let cutPath = svgPath(this.pos.x + cut.hole * kStripSize + kStripSize/2, 0,
+                                          this.pos.x + cut.hole * kStripSize + kStripSize/2, kStripSize);
+                    cutsGroup.appendChild(cutPath);
+                }
                 group.appendChild(cutsGroup);
             }
             return translate(group, this.pos.x, this.pos.y);
@@ -261,6 +237,173 @@ var Stripboard = (function() {
                 y: row * kStripSize
             },
             cuts: []
+        });
+    }
+
+    let WirePrototype = {
+        makeSvg: function() {
+            let group = svgGroup("wire");
+            let fromPos = this.fromStrip().holePos(this.from.hole);
+            let toPos = this.toStrip().holePos(this.to.hole);
+            let wire = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
+            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+            group.appendChild(wire);
+            return group;
+        },
+        fromStrip: function() {
+            return getStrip(this.from);
+        },
+        toStrip: function() {
+            return getStrip(this.to);
+        }
+    };
+    
+    function createWire(spec) {
+        let fromRef = parseRef(spec.from);
+        let toRef = parseRef(spec.to);
+        return extend(Object.create(WirePrototype), {
+            from: fromRef,
+            to: toRef,
+            spec: spec
+        });
+    }
+
+
+    // Given a component (e.g. capacitor, resistor) that mounts from the
+    // component.fromPos to component.toPos, return a fromPos and toPos
+    // that represents the component position along the wire.
+    function componentPosition(fromPos, toPos, componentLength) {
+        let deltaX = toPos.x - fromPos.x,
+            deltaY = toPos.y - fromPos.y,
+            wireLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
+            startWireLength = (wireLength - componentLength) / 2,
+            startPercent = startWireLength / wireLength,
+            endPercent = (startWireLength + componentLength) / wireLength;
+        return {
+            fromPos: {
+                x: fromPos.x + (deltaX) * startPercent,
+                y: fromPos.y + (deltaY) * startPercent
+            },
+            centerPos: {
+                x: fromPos.x + (deltaX) * 0.5,
+                y: fromPos.y + (deltaY) * 0.5
+            },
+            toPos: {
+                x: fromPos.x + (deltaX) * endPercent,
+                y: fromPos.y + (deltaY) * endPercent
+            }
+        }
+    }
+
+    const kResistorLength = 0.17;
+    const kCapacitorLength = 0.12;
+    const kLedLength = 0.1;
+    const kLedRadius = 0.12;
+
+    let ComponentPrototype = {
+        fromStrip: function() {
+            return getStrip(this.from);
+        },
+        toStrip: function() {
+            return getStrip(this.to);
+        }
+    };
+
+    let ResistorPrototype = {
+        makeSvg: function() {
+            let group = svgGroup("resistor");
+            let fromPos = this.fromStrip().holePos(this.from.hole);
+            let toPos = this.toStrip().holePos(this.to.hole);
+            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
+            let componentPos = componentPosition(fromPos, toPos, kResistorLength);
+            let resistorPath = svgPath(componentPos.fromPos.x, componentPos.fromPos.y,
+                    componentPos.toPos.x, componentPos.toPos.y,
+                    "resistor-body");
+            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+            group.appendChild(path);
+            group.appendChild(resistorPath);
+            return group;
+        },
+        ...ComponentPrototype
+    };
+
+    let CapacitorPrototype = {
+        makeSvg: function() {
+            let group = svgGroup("capacitor");
+            let fromPos = this.fromStrip().holePos(this.from.hole);
+            let toPos = this.toStrip().holePos(this.to.hole);
+            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
+            let componentPos = componentPosition(fromPos, toPos, kCapacitorLength);
+            let capacitorPath = svgPath(componentPos.fromPos.x, componentPos.fromPos.y,
+                    componentPos.toPos.x, componentPos.toPos.y,
+                    "capacitor-body");
+            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+            group.appendChild(path);
+            group.appendChild(capacitorPath);
+            return group;
+        },
+        ...ComponentPrototype
+    };
+
+    let LedPrototype = {
+        makeSvg: function() {
+            let fromPos = this.fromStrip().holePos(this.from.hole);
+            let toPos = this.toStrip().holePos(this.to.hole);
+            let componentPos = componentPosition(fromPos, toPos, kLedLength);
+            let body = svgCircle(componentPos.centerPos.x, componentPos.centerPos.y, kLedRadius, "led-body");
+            let group = svgGroup("led");
+            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+            let wirePath = svgPath(fromPos.x, fromPos.y, componentPos.fromPos.x, componentPos.fromPos.y, "wire");
+            group.appendChild(wirePath);
+            wirePath = svgPath(componentPos.toPos.x, componentPos.toPos.y, toPos.x, toPos.y, "wire");
+            group.appendChild(wirePath);
+            group.appendChild(body);
+            return group;
+        },
+        ...ComponentPrototype
+    };
+
+    let HeaderPrototype = {
+        makeSvg: function() {
+            let fromPos = this.fromStrip().holePos(this.from.hole);
+            let toPos = this.toStrip().holePos(this.to.hole);
+            let group = svgGroup("header");
+            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
+            group.appendChild(path);
+            return group;
+        },
+        ...ComponentPrototype
+    };
+
+    function createComponent(spec) {
+        let proto = undefined;
+        switch (spec.type) {
+        case "capacitor":
+            proto = CapacitorPrototype;
+            break;
+        case "led":
+            proto = LedPrototype;
+            break;
+        case "resistor":
+            proto = ResistorPrototype;
+            break;
+        case "header":
+            proto = HeaderPrototype;
+            break;
+        default:
+            console.log("Undefined component type ", spec.type, " in ", spec);
+            return undefined;
+        }
+        let fromRef = parseRef(spec.from);
+        let toRef = parseRef(spec.to);
+        return extend(Object.create(proto), {
+            from: fromRef,
+            to: toRef,
+            spec: spec
         });
     }
 
@@ -289,7 +432,6 @@ var Stripboard = (function() {
         let stripGroup = svgGroup();
         stripGroup.setAttribute("class", "strips");
         for (const [key, strip] of Object.entries(strips)) {
-            // console.log(`Strip ${key} => `, strip);
             stripGroup.appendChild(strip.makeSvg());
         }
         backgroundGroup.appendChild(stripGroup);
@@ -297,28 +439,30 @@ var Stripboard = (function() {
     }
 
     function wiresSvg() {
-        let wiresGroup = svgGroup();
-        wiresGroup.setAttribute("class", "wires");
+        let wiresGroup = svgGroup("wires");
         for (const wire of wires) {
-            console.log("making SVG for ", wire);
             wiresGroup.appendChild(wire.makeSvg());
         }
         return wiresGroup;
     }
     
+    function componentsSvg() {
+        let group = svgGroup("components");
+        for (const component of components) {
+            group.appendChild(component.makeSvg());
+        }
+        return group;
+    }
     function initStripboard(root, circuit) {
         boardHeight = circuit.dimensions.height;
         boardWidth = circuit.dimensions.width;
         stripCount = Math.floor(boardHeight / kStripSize);
         holeCount = Math.floor(boardWidth / kStripSize);
         strips = makeStrips();
-        root.appendChild(makeRulers());
-        root.appendChild(makeBackground());
         
         // iterate cuts
         for (const cut of circuit.cuts) {
             let ref = parseRef(cut);
-            console.log("CUT: ", cut, " @ ", ref);
             let strip = getStrip(ref);
             strip.addCut(ref);
         }
@@ -328,7 +472,20 @@ var Stripboard = (function() {
             let wire = createWire(wireSpec);
             wires.push(wire);
         }
-        root.appendChild(wiresSvg());
+
+        for (const componentSpec of circuit.components) {
+            let component = createComponent(componentSpec);
+            if (component !== undefined) {
+                components.push(component);
+            }
+        }
+
+        root.appendChild(makeRulers());
+        let board = svgGroup("board");
+        board.appendChild(makeBackground());
+        board.appendChild(wiresSvg());
+        board.appendChild(componentsSvg());
+        root.appendChild(board);
     }
 
     return {
@@ -337,7 +494,6 @@ var Stripboard = (function() {
         getWires: function() { return wires; },
         parseRef: parseRef,
         init: function(circuit) {
-            console.log("Init stripboard");
             $ALL("svg.stripboard").forEach((el) => {
                 console.log("initializing stripboard ", el);
                 initStripboard(el, circuit);
