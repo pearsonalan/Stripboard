@@ -1,10 +1,35 @@
 /*********************************************
-* Stripboard background
+* View handling
 */
 
-svg.stripboard g.background {
+svg.stripboard g.view {
     transform: translate(20px, 20px);
 }
+
+svg.stripboard g.view g.board {
+    transition: transform 0.4s;
+}
+
+svg.stripboard g.view g.board.front-view .front {
+    opacity: 1.0;
+}
+
+svg.stripboard g.view g.board.front-view .back {
+    opacity: 0.4;
+}
+
+svg.stripboard g.view g.board.back-view .front {
+    opacity: 0.4;
+}
+
+svg.stripboard g.view g.board.back-view .back {
+    opacity: 1.0;
+}
+
+
+/*********************************************
+* Stripboard background
+*/
 
 svg.stripboard g.background > rect {
     /* fill: #f7e2bc; */
@@ -70,10 +95,6 @@ svg.stripboard g.strip g.cuts > path {
 * Wires
 */
 
-svg.stripboard g.wires {
-    transform: translate(20px, 20px);
-}
-
 svg.stripboard g.wires g.wire > circle {
     fill: blue;
     stroke: blue;
@@ -90,10 +111,6 @@ svg.stripboard g.wires g.wire > path {
 /**********************************************
 * Components
 */
-
-svg.stripboard g.components {
-    transform: translate(20px, 20px);
-}
 
 svg.stripboard g.components text.label {
 	fill: #dddddd;

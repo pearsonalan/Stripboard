@@ -8,7 +8,7 @@ var CIRCUIT = {
         { from: "A2", to: "C2" },
         { from: "A12", to: "B12" },
         { from: "O20", to: "T22" },
-        { from: "O25", to: "P32" }
+        { from: "O25", to: "P32", layer: "back" }
     ],
     components: [
         {
@@ -22,6 +22,7 @@ var CIRCUIT = {
             type: "resistor",
             from: "A15",
             to: "F15",
+            layer: "back"
         },
         {
             label: "C1",

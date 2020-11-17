@@ -214,6 +214,7 @@ var Stripboard = (function() {
     let strips = {};
     let wires = [];
     let legend = null;
+    let board = null;
     let components = [];
     let stripCount = 0;
     let holeCount = 0;
@@ -343,6 +344,9 @@ var Stripboard = (function() {
 	*/
 
     let WirePrototype = {
+        layer: function() {
+            return this.spec.layer == "back" ? "back" : "front";
+        },
         makeSvg: function() {
             let group = svgGroup("wire"),
                 fromPos = this.fromStrip().holePos(this.from.hole),
@@ -408,6 +412,9 @@ var Stripboard = (function() {
     }
 
     let ComponentPrototype = {
+        layer: function() {
+            return (this.spec.layer == "back") ? "back" : "front";
+        },
         fromStrip: function() {
             return getStrip(this.from);
         },
@@ -534,6 +541,9 @@ var Stripboard = (function() {
 
     const kICPinRadius = 0.04;
     let ICPrototype = {
+        layer: function() {
+            return this.spec.layer == "back" ? "back" : "front";
+        },
         makeSvg: function() {
             let group = svgGroup("ic");
             let pinsGroup = svgGroup("pins");
@@ -662,16 +672,32 @@ var Stripboard = (function() {
 
     function wiresSvg() {
         let wiresGroup = svgGroup("wires");
+        let front = svgGroup("front");
+        let back = svgGroup("back");
+        wiresGroup.appendChild(front);
+        wiresGroup.appendChild(back);
         for (const wire of wires) {
-            wiresGroup.appendChild(wire.makeSvg());
+            if (wire.layer() == "back") {
+                back.appendChild(wire.makeSvg());
+            } else {
+                front.appendChild(wire.makeSvg());
+            }
         }
         return wiresGroup;
     }
     
     function componentsSvg() {
         let group = svgGroup("components");
+        let front = svgGroup("front");
+        let back = svgGroup("back");
+        group.appendChild(front);
+        group.appendChild(back);
         for (const component of components) {
-            group.appendChild(component.makeSvg());
+            if (component.layer() == "back") {
+                back.appendChild(component.makeSvg());
+            } else {
+                front.appendChild(component.makeSvg());
+            }
         }
         return group;
     }
@@ -681,8 +707,14 @@ var Stripboard = (function() {
     function swapView() {
         if (view == "FRONT") {
             view = "BACK";
+            board.setAttribute("transform", `matrix(-1 0 0 1 ${toPixels(boardWidth)} 0)`);
+            board.classList.remove("front-view");
+            board.classList.add("back-view");
         } else {
             view = "FRONT";
+            board.setAttribute("transform", "");
+            board.classList.add("front-view");
+            board.classList.remove("back-view");
         }
     }
 
@@ -752,11 +784,13 @@ var Stripboard = (function() {
         }
 
         root.appendChild(makeRulers());
-        let board = svgGroup("board");
+        board = svgGroup("board front-view");
         board.appendChild(makeBackground());
         board.appendChild(wiresSvg());
         board.appendChild(componentsSvg());
-        root.appendChild(board);
+        let view = svgGroup("view");
+        view.appendChild(board);
+        root.appendChild(view);
         root.appendChild(legend.makeSvg());
     }
 
