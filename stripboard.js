@@ -349,16 +349,16 @@ var Stripboard = (function() {
         },
         makeSvg: function() {
             let group = svgGroup("wire"),
-                fromPos = this.fromStrip().holePos(this.from.hole),
-                toPos = this.toStrip().holePos(this.to.hole),
-                vertical = (fromPos.x == toPos.x),
-                horizontal = (fromPos.y == toPos.y),
+                from = this.fromStrip().holePos(this.from.hole),
+                to = this.toStrip().holePos(this.to.hole),
+                vertical = (from.x == to.x),
+                horizontal = (from.y == to.y),
                 wire = ((vertical || horizontal) ?
-                            svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y) : 
-                            svgSpline(fromPos.x, fromPos.y, toPos.x, toPos.y,
-                                      fromPos.x, fromPos.y + 0.1, toPos.x - 0.1, toPos.y));
-            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
-            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+                            svgLine(from.x, from.y, to.x, to.y) : 
+                            svgSpline(from.x, from.y, to.x, to.y,
+                                      from.x, from.y + 0.1, to.x - 0.1, to.y));
+            group.appendChild(svgCircle(from.x, from.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(to.x, to.y, kFilledHoleRadius));
             group.appendChild(wire);
             return group;
         },
@@ -385,28 +385,28 @@ var Stripboard = (function() {
 	* Components
 	*/
 
-    // Given a component (e.g. capacitor, resistor) that mounts from the
-    // component.fromPos to component.toPos, return a fromPos and toPos
-    // that represents the component position along the wire.
-    function componentPosition(fromPos, toPos, componentLength) {
-        let deltaX = toPos.x - fromPos.x,
-            deltaY = toPos.y - fromPos.y,
+    // Given a component (e.g. capacitor, resistor, diode) that mounts from the
+    // "from" point to the "to" points, return a from, to and to center that
+    // represents the component position along the wire.
+    function componentPosition(from, to, componentLength) {
+        let deltaX = to.x - from.x,
+            deltaY = to.y - from.y,
             wireLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY),
             startWireLength = (wireLength - componentLength) / 2,
             startPercent = startWireLength / wireLength,
             endPercent = (startWireLength + componentLength) / wireLength;
         return {
             fromPos: {
-                x: fromPos.x + (deltaX) * startPercent,
-                y: fromPos.y + (deltaY) * startPercent
+                x: from.x + (deltaX) * startPercent,
+                y: from.y + (deltaY) * startPercent
             },
             centerPos: {
-                x: fromPos.x + (deltaX) * 0.5,
-                y: fromPos.y + (deltaY) * 0.5
+                x: from.x + (deltaX) * 0.5,
+                y: from.y + (deltaY) * 0.5
             },
             toPos: {
-                x: fromPos.x + (deltaX) * endPercent,
-                y: fromPos.y + (deltaY) * endPercent
+                x: from.x + (deltaX) * endPercent,
+                y: from.y + (deltaY) * endPercent
             }
         }
     }
@@ -470,15 +470,15 @@ var Stripboard = (function() {
     let CapacitorPrototype = {
         makeSvg: function() {
             let group = svgGroup("capacitor");
-            let fromPos = this.fromStrip().holePos(this.from.hole);
-            let toPos = this.toStrip().holePos(this.to.hole);
-            let path = svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
-            let componentPos = componentPosition(fromPos, toPos, kCapacitorLength);
+            let from = this.fromStrip().holePos(this.from.hole);
+            let to = this.toStrip().holePos(this.to.hole);
+            let path = svgLine(from.x, from.y, to.x, to.y, "wire");
+            let componentPos = componentPosition(from, to, kCapacitorLength);
             let capacitorPath = svgLine(componentPos.fromPos.x, componentPos.fromPos.y,
                     componentPos.toPos.x, componentPos.toPos.y,
                     "capacitor-body");
-            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
-            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(from.x, from.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(to.x, to.y, kFilledHoleRadius));
             group.appendChild(path);
             group.appendChild(capacitorPath);
             if (this.spec.label !== undefined) {
@@ -498,15 +498,15 @@ var Stripboard = (function() {
     let DiodePrototype = {
         makeSvg: function() {
             let group = svgGroup("diode");
-            let fromPos = this.fromStrip().holePos(this.from.hole);
-            let toPos = this.toStrip().holePos(this.to.hole);
-            let path = svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
-            let componentPos = componentPosition(fromPos, toPos, kDiodeLength);
+            let from = this.fromStrip().holePos(this.from.hole);
+            let to = this.toStrip().holePos(this.to.hole);
+            let path = svgLine(from.x, from.y, to.x, to.y, "wire");
+            let componentPos = componentPosition(from, to, kDiodeLength);
             let diodePath = svgLine(componentPos.fromPos.x, componentPos.fromPos.y,
                     componentPos.toPos.x, componentPos.toPos.y,
                     "diode-body");
-            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
-            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(from.x, from.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(to.x, to.y, kFilledHoleRadius));
             group.appendChild(path);
             group.appendChild(diodePath);
             if (this.spec.label !== undefined) {
@@ -524,10 +524,10 @@ var Stripboard = (function() {
 
     let HeaderPrototype = {
         makeSvg: function() {
-            let fromPos = this.fromStrip().holePos(this.from.hole);
-            let toPos = this.toStrip().holePos(this.to.hole);
+            let from = this.fromStrip().holePos(this.from.hole);
+            let to = this.toStrip().holePos(this.to.hole);
             let group = svgGroup("header");
-            let path = svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y);
+            let path = svgLine(from.x, from.y, to.x, to.y);
             group.appendChild(path);
             return group;
         },
@@ -608,16 +608,16 @@ var Stripboard = (function() {
     const kLedRadius = 0.12;
     let LedPrototype = {
         makeSvg: function() {
-            let fromPos = this.fromStrip().holePos(this.from.hole);
-            let toPos = this.toStrip().holePos(this.to.hole);
-            let componentPos = componentPosition(fromPos, toPos, kLedLength);
+            let from = this.fromStrip().holePos(this.from.hole);
+            let to = this.toStrip().holePos(this.to.hole);
+            let componentPos = componentPosition(from, to, kLedLength);
             let body = svgCircle(componentPos.centerPos.x, componentPos.centerPos.y, kLedRadius, "led-body");
             let group = svgGroup("led");
-            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
-            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
-            let wirePath = svgLine(fromPos.x, fromPos.y, componentPos.fromPos.x, componentPos.fromPos.y, "wire");
+            group.appendChild(svgCircle(from.x, from.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(to.x, to.y, kFilledHoleRadius));
+            let wirePath = svgLine(from.x, from.y, componentPos.fromPos.x, componentPos.fromPos.y, "wire");
             group.appendChild(wirePath);
-            wirePath = svgLine(componentPos.toPos.x, componentPos.toPos.y, toPos.x, toPos.y, "wire");
+            wirePath = svgLine(componentPos.toPos.x, componentPos.toPos.y, to.x, to.y, "wire");
             group.appendChild(wirePath);
             group.appendChild(body);
             if (this.spec.label !== undefined) {
