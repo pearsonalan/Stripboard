@@ -108,6 +108,17 @@ var Stripboard = (function() {
         return circle;
     }
 
+    function svgText(x, y, content, classname) {
+        let text = svgElement("text");
+        text.setAttribute("x", toPixels(x));
+        text.setAttribute("y", toPixels(y));
+        text.textContent = content;
+        if (classname !== undefined) {
+            text.setAttribute("class", classname);
+        }
+        return text;
+    }
+
     function transform(el, t) {
         el.setAttribute("transform", t);
         return el;
@@ -314,6 +325,10 @@ var Stripboard = (function() {
         },
         toStrip: function() {
             return getStrip(this.to);
+        },
+        labelSvg: function(componentPosition, label) {
+            return svgText(componentPosition.centerPos.x, componentPosition.centerPos.y,
+                    label, "label");
         }
     };
 
@@ -371,6 +386,9 @@ var Stripboard = (function() {
             group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
             group.appendChild(path);
             group.appendChild(capacitorPath);
+            if (this.spec.label !== undefined) {
+                group.appendChild(this.labelSvg(componentPos, this.spec.label));
+            }
             return group;
         },
         ...ComponentPrototype
@@ -396,6 +414,9 @@ var Stripboard = (function() {
             group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
             group.appendChild(path);
             group.appendChild(diodePath);
+            if (this.spec.label !== undefined) {
+                group.appendChild(this.labelSvg(componentPos, this.spec.label));
+            }
             return group;
         },
         ...ComponentPrototype
@@ -501,6 +522,9 @@ var Stripboard = (function() {
             wirePath = svgPath(componentPos.toPos.x, componentPos.toPos.y, toPos.x, toPos.y, "wire");
             group.appendChild(wirePath);
             group.appendChild(body);
+            if (this.spec.label !== undefined) {
+                group.appendChild(this.labelSvg(componentPos, this.spec.label));
+            }
             return group;
         },
         ...ComponentPrototype
@@ -526,6 +550,9 @@ var Stripboard = (function() {
             group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
             group.appendChild(path);
             group.appendChild(resistorPath);
+            if (this.spec.label !== undefined) {
+                group.appendChild(this.labelSvg(componentPos, this.spec.label));
+            }
             return group;
         },
         ...ComponentPrototype

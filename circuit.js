@@ -10,27 +10,31 @@ var CIRCUIT = {
     ],
     components: [
         {
-			label: "R1",
+            label: "R1",
             type: "resistor",
             from: "B5",
             to: "F5",
         },
         {
+            label: "R2",
             type: "resistor",
             from: "A15",
             to: "F15",
         },
         {
+            label: "C1",
             type: "capacitor",
             from: "B20",
             to: "E20"
         },
         {
+            label: "C2",
             type: "capacitor",
             from: "D28",
             to: "D32"
         },
         {
+            label: "D1",
             type: "diode",
             from: "M5",
             to: "Q5",
@@ -41,6 +45,7 @@ var CIRCUIT = {
             to: "D35"
         },
         {
+            label: "LED",
             type: "led",
             from: "F3",
             to: "G3"

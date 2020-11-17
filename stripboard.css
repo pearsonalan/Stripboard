@@ -66,6 +66,19 @@ svg.stripboard g.components {
     transform: translate(20px, 20px);
 }
 
+svg.stripboard g.components text.label {
+	fill: #dddddd;
+	font-family: monospace;
+	font-size: 14px;
+	font-weight: bold;
+	text-anchor: middle;
+	text-shadow: 1px 1px #444444;
+	display: none;
+}
+
+svg.stripboard g.components g:hover > text.label {
+	display: block;
+}
 
 /**********************************************
 * Capacitors
