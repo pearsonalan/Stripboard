@@ -247,6 +247,10 @@ var Stripboard = (function() {
         }
         return strips[ref.strip];
     }
+
+    function hover(text, el, event) {
+        console.log("HOVER: " + text);
+    }
     
     let StripPrototype = {
         addCut: function(cut) {
@@ -261,10 +265,12 @@ var Stripboard = (function() {
         makeSvg: function() {
             let group = svgGroup("strip"),
                 rect = svgRect(kStripPadding, kStripPadding, boardWidth - 2 * kStripPadding , kStripWidth);
+            rect.addEventListener("mouseover", hover.curry("STRIP " + this.name, rect));
             group.appendChild(rect);
             let holesGroup = svgGroup("holes");
-            for (var x = 0; x < boardWidth; x += kStripSize) {
-                let hole = svgCircle(x + kStripSize / 2, kStripSize / 2, kHoleRadius);
+            for (var n = 0; n < holeCount; n += 1) {
+                let hole = svgCircle(n * kStripSize + kStripSize / 2, kStripSize / 2, kHoleRadius);
+                hole.addEventListener("mouseover", hover.curry("HOLE " + this.name + n, hole));
                 holesGroup.appendChild(hole);
             }
             group.appendChild(holesGroup);
