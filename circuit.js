@@ -38,6 +38,13 @@ var CIRCUIT = {
             type: "led",
             from: "F3",
             to: "G3"
+        }, 
+        { 
+            type: "ic",
+            pins: 8,
+            width: 3,
+            at: "H20"
         }
+
     ]
 };

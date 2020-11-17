@@ -126,6 +126,22 @@ svg.stripboard g.components g.header > path {
 
 
 /**********************************************
+* IC
+*/
+
+svg.stripboard g.components g.ic g.pins circle {
+    fill: yellow;
+}
+
+svg.stripboard g.components g.ic > rect.body {
+    stroke: #444444;
+    fill: #666666;
+    stroke-width: 3.0;
+    stroke-linecap: square;
+}
+
+
+/**********************************************
 * Resistors
 */
 

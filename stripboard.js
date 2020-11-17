@@ -84,12 +84,15 @@ var Stripboard = (function() {
     }
 
     // Units: inches
-    function svgRect(x, y, width, height) {
+    function svgRect(x, y, width, height, classname) {
         let rect = svgElement("rect");
         rect.setAttribute("x", toPixels(x));
         rect.setAttribute("y", toPixels(y));
         rect.setAttribute("width", toPixels(width));
         rect.setAttribute("height", toPixels(height));
+        if (classname !== undefined) {
+            rect.setAttribute("class", classname);
+        }
         return rect;
     }
 
@@ -379,6 +382,64 @@ var Stripboard = (function() {
         ...ComponentPrototype
     };
 
+    const kICPinRadius = 0.04;
+
+    let ICPrototype = {
+        makeSvg: function() {
+            let group = svgGroup("ic");
+            let pinsGroup = svgGroup("pins");
+            for (let i = 0; i < this.pins; i++) {
+                let pinPos = this.pinPos(i),
+                    pinSvg = svgCircle(pinPos.x, pinPos.y, kICPinRadius);
+                pinsGroup.appendChild(pinSvg);
+            }
+            group.appendChild(pinsGroup);
+            let topLeft = this.topLeftPos(),
+                rect = svgRect(topLeft.x, topLeft.y, this.width, this.height, "body");
+            group.appendChild(rect);
+            return group;
+        },
+        // The IC is defined as being "at" a location which is the top-left
+        // pin.  This returns the strip that the top left pin is in.
+        atStrip: function() {
+            return getStrip(this.at.strip);
+        },
+        // Returns the position (in inches) of the center of the "at" pin
+        atPos: function() {
+            return getStrip(this.at.strip).holePos(this.at.hole);
+        },
+        // Returns the position (in inches) of the top left corner
+        topLeftPos() {
+            let strip = this.atStrip();
+            return {
+                x: strip.pos.x + this.at.hole * kStripSize + kStripSize/2,
+                y: strip.pos.y
+            };
+        },
+        // Returns the position (in inches) of the center of pin N, where pin
+        // 0 is the "AT" pin and the pins are numbererd down the left side
+        // then down the right side.
+        pinPos: function(pin) {
+            let atPos = this.atPos();
+            return {
+                x: (pin < this.pinsPerSide ? atPos.x : this.width + atPos.x),
+                y: atPos.y + ((pin % this.pinsPerSide) * kStripSize)
+            };
+        }
+    };
+
+    function createIC(spec) {
+        let atRef = parseRef(spec.at);
+        return extend(Object.create(ICPrototype), {
+            at: atRef,
+            pins: spec.pins,
+            pinsPerSide: spec.pins / 2,
+            width: spec.width * kStripSize,
+            height: (spec.pins / 2) * kStripSize,
+            spec: spec
+        });
+    }
+
     function createComponent(spec) {
         let proto = undefined;
         switch (spec.type) {
@@ -394,6 +455,9 @@ var Stripboard = (function() {
         case "header":
             proto = HeaderPrototype;
             break;
+        case "ic":
+            // IC's are different in that they don't have a from -> to shape
+            return createIC(spec);
         default:
             console.log("Undefined component type ", spec.type, " in ", spec);
             return undefined;
@@ -453,6 +517,7 @@ var Stripboard = (function() {
         }
         return group;
     }
+
     function initStripboard(root, circuit) {
         boardHeight = circuit.dimensions.height;
         boardWidth = circuit.dimensions.width;
