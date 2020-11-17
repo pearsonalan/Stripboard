@@ -10,6 +10,7 @@ var CIRCUIT = {
     ],
     components: [
         {
+			label: "R1",
             type: "resistor",
             from: "B5",
             to: "F5",
