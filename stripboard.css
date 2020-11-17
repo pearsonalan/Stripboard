@@ -1,3 +1,7 @@
+/*********************************************
+* Stripboard background
+*/
+
 svg.stripboard g.background {
     transform: translate(20px, 20px);
 }
@@ -6,6 +10,10 @@ svg.stripboard g.background > rect {
     /* fill: #f7e2bc; */
     fill: #788f26;
 }
+
+/*********************************************
+* Stripboard rulers
+*/
 
 svg.stripboard g.rulers g.horizontal-ruler {
     transform: translate(20px, 0);
@@ -19,6 +27,25 @@ svg.stripboard g.rulers path {
     stroke: black;
     stroke-width: 2.0;
 }
+
+/*********************************************
+* Legend
+*/
+
+svg.stripboard g.legend {
+    cursor: default;
+}
+
+svg.stripboard g.legend > rect.background {
+    fill: #b6b6b6;
+}
+
+svg.stripboard g.legend text {
+	fill: black;
+	font-family: "Arial";
+	font-size: 14px;
+}
+
 
 /*********************************************
 * Stripboard strips
@@ -37,6 +64,7 @@ svg.stripboard g.strip g.cuts > path {
     stroke-width: 7.0;
     opacity: 0.8;
 }
+
 
 /**********************************************
 * Wires
@@ -80,6 +108,7 @@ svg.stripboard g.components text.label {
 svg.stripboard g.components g:hover > text.label {
 	display: block;
 }
+
 
 /**********************************************
 * Capacitors
@@ -149,6 +178,7 @@ svg.stripboard g.components g.led > circle.led-body {
     opacity: 0.7;
     stroke-width: 6;
 }
+
 
 /**********************************************
 * Header

@@ -111,19 +111,23 @@ var Stripboard = (function() {
         return path;
     }
 
-    // Units: inches
+    // Units: Inches
     function svgRect(x, y, width, height, classname) {
+        return svgRectPx(toPixels(x), toPixels(y), toPixels(width), toPixels(height), classname);
+    }
+
+    // Units: Pixels
+    function svgRectPx(x, y, width, height, classname) {
         let rect = svgElement("rect");
-        rect.setAttribute("x", toPixels(x));
-        rect.setAttribute("y", toPixels(y));
-        rect.setAttribute("width", toPixels(width));
-        rect.setAttribute("height", toPixels(height));
+        rect.setAttribute("x", x);
+        rect.setAttribute("y", y);
+        rect.setAttribute("width", width);
+        rect.setAttribute("height", height);
         if (classname !== undefined) {
             rect.setAttribute("class", classname);
         }
         return rect;
     }
-
     // Units: inches
     function svgCircle(x, y, radius, classname) {
         let circle = svgElement("circle");
@@ -136,10 +140,16 @@ var Stripboard = (function() {
         return circle;
     }
 
+    // Units: inches
     function svgText(x, y, content, classname) {
+        return svgTextPx(toPixels(x), toPixels(y), content, classname);
+    }
+
+    // Units: Pixels
+    function svgTextPx(x, y, content, classname) {
         let text = svgElement("text");
-        text.setAttribute("x", toPixels(x));
-        text.setAttribute("y", toPixels(y));
+        text.setAttribute("x", x);
+        text.setAttribute("y", y);
         text.textContent = content;
         if (classname !== undefined) {
             text.setAttribute("class", classname);
@@ -153,7 +163,7 @@ var Stripboard = (function() {
     }
 
     function translate(el, dx, dy) {
-        return transform(el, "translate(" + toPixels(dx) + ", " + toPixels(dy) + ")");
+        return translatePx(el, toPixels(dx), toPixels(dy));
     }
 
     function translatePx(el, dx, dy) {
@@ -203,6 +213,7 @@ var Stripboard = (function() {
     let boardHeight = 0;
     let strips = {};
     let wires = [];
+    let legend = null;
     let components = [];
     let stripCount = 0;
     let holeCount = 0;
@@ -248,8 +259,14 @@ var Stripboard = (function() {
         return strips[ref.strip];
     }
 
-    function hover(text, el, event) {
+    // Hander for hover over an element
+    function onHover(text, el, event) {
         console.log("HOVER: " + text);
+        legend.setHoverContent(text);
+    }
+
+    function onMouseLeave(event) {
+        legend.setHoverContent("");
     }
     
     let StripPrototype = {
@@ -265,12 +282,14 @@ var Stripboard = (function() {
         makeSvg: function() {
             let group = svgGroup("strip"),
                 rect = svgRect(kStripPadding, kStripPadding, boardWidth - 2 * kStripPadding , kStripWidth);
-            rect.addEventListener("mouseover", hover.curry("STRIP " + this.name, rect));
+            rect.addEventListener("mouseover", onHover.curry("STRIP " + this.name, rect));
+            rect.addEventListener("mouseleave", onMouseLeave);
             group.appendChild(rect);
             let holesGroup = svgGroup("holes");
             for (var n = 0; n < holeCount; n += 1) {
                 let hole = svgCircle(n * kStripSize + kStripSize / 2, kStripSize / 2, kHoleRadius);
-                hole.addEventListener("mouseover", hover.curry("HOLE " + this.name + n, hole));
+                hole.addEventListener("mouseover", onHover.curry("HOLE " + this.name + n, hole));
+                hole.addEventListener("mouseleave", onMouseLeave);
                 holesGroup.appendChild(hole);
             }
             group.appendChild(holesGroup);
@@ -657,12 +676,60 @@ var Stripboard = (function() {
         return group;
     }
 
+    let view = "FRONT";
+
+    function swapView() {
+        if (view == "FRONT") {
+            view = "BACK";
+        } else {
+            view = "FRONT";
+        }
+    }
+
+	/******************
+	* Legend
+    */
+    let LegendPrototype = {
+        makeSvg: function() {
+            let group = svgGroup("legend");
+            let background = svgRectPx(0, 0, this.width, this.height, "background");
+            group.appendChild(background);
+            this.textSvgEl = svgTextPx(4, this.height - 4, "", "hover");
+            group.appendChild(this.textSvgEl);
+            let viewControl = svgTextPx(this.width - 60, this.height - 4, view, "view");
+            group.appendChild(viewControl);
+            viewControl.addEventListener("click", function (event) {
+                swapView();
+                console.log("Click view control, this = ", this);
+                console.log("Event = ", event);
+                event.target.textContent = view;
+            }.bind(this));
+            return translatePx(group, this.x, this.y);
+        },
+        setHoverContent: function(content) {
+            this.textSvgEl.textContent = content;
+        }
+    };
+
+    const kLegendHeight = 20;
+    function makeLegend(x, y, width) {
+        return extend(Object.create(LegendPrototype), {
+            x: x,
+            y: y,
+            width: width,
+            textSvgEl: null,
+            height: kLegendHeight
+        });
+    }
+
     function initStripboard(root, circuit) {
         boardHeight = circuit.dimensions.height;
         boardWidth = circuit.dimensions.width;
         stripCount = Math.floor(boardHeight / kStripSize);
         holeCount = Math.floor(boardWidth / kStripSize);
         strips = makeStrips();
+        
+        legend = makeLegend(0, root.clientHeight - kLegendHeight, root.clientWidth);
         
         // iterate cuts
         for (const cut of circuit.cuts) {
@@ -690,6 +757,7 @@ var Stripboard = (function() {
         board.appendChild(wiresSvg());
         board.appendChild(componentsSvg());
         root.appendChild(board);
+        root.appendChild(legend.makeSvg());
     }
 
     return {
