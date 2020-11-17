@@ -6,7 +6,9 @@ var CIRCUIT = {
     cuts: [ "A10", "E18" ],
     wires: [
         { from: "A2", to: "C2" },
-        { from: "A12", to: "B12" }
+        { from: "A12", to: "B12" },
+        { from: "O20", to: "T22" },
+        { from: "O25", to: "P32" }
     ],
     components: [
         {

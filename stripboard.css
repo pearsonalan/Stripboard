@@ -55,6 +55,7 @@ svg.stripboard g.wires g.wire > circle {
 svg.stripboard g.wires g.wire > path {
     stroke: blue;
     stroke-width: 4.0;
+	fill: none;
 }
 
 

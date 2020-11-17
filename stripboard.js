@@ -48,27 +48,8 @@ function $ALL(q) {
 var Stripboard = (function() {
     const kPixelsPerInch = 150.0;
 
-    function moveAbs(x1, y1) {
-        return "M " + toPixels(x1) + " " + toPixels(y1) + "\n";
-    }
-
-    function lineAbs(x1, y1) {
-        return "L " + toPixels(x1) + " " + toPixels(y1) + "\n";
-    }
-
     function toPixels(d) {
         return d * kPixelsPerInch;
-    }
-
-    // Units: inches
-    function svgPath(x1, y1, x2, y2, classname) {
-        let path = svgElement("path");
-        let commands = moveAbs(x1, y1) + lineAbs(x2, y2);
-        path.setAttribute("d", commands);
-        if (classname !== undefined) {
-            path.setAttribute("class", classname);
-        }
-        return path;
     }
 
     function svgElement(e) {
@@ -81,6 +62,53 @@ var Stripboard = (function() {
             group.setAttribute("class", classname);
         }
         return group;
+    }
+
+    // Make an SVG Path command to move to the absolute position (x1, y1)
+    // Units: inches
+    function moveAbs(x1, y1) {
+        return "M " + toPixels(x1) + " " + toPixels(y1) + "\n";
+    }
+
+    // Make an SVG Path command to draw a straight line to the absolute position (x1, y1)
+    // Units: inches
+    function lineAbs(x1, y1) {
+        return "L " + toPixels(x1) + " " + toPixels(y1) + "\n";
+    }
+
+    // Make an SVG Path command to draw a cubic Bezier curve to the absolute position (x, y)
+    // with control points C1=(cx1, cy1) and C2=(cx2, cy2)
+    // Units: inches
+    function cubicSplineAbs(x, y, cx1, cy1, cx2, cy2) {
+        return "C " 
+            + toPixels(cx1) + " " + toPixels(cy1) + " "
+            + toPixels(cx2) + " " + toPixels(cy2) + " "
+            + toPixels(x) + " " + toPixels(y) + "\n";
+    }
+
+    // Create an SVG Path element drawing a straight line from (x1, y1) to (x2, y2)
+    // Units: inches
+    function svgLine(x1, y1, x2, y2, classname) {
+        let path = svgElement("path");
+        let commands = moveAbs(x1, y1) + lineAbs(x2, y2);
+        path.setAttribute("d", commands);
+        if (classname !== undefined) {
+            path.setAttribute("class", classname);
+        }
+        return path;
+    }
+    
+    // Create an SVG Path element drawing a cubic Bezier curve from (x1, y1) to (x2, y2)
+    // with control points C1=(cx1, cy1) and C2=(cx2, cy2)
+    // Units: inches
+    function svgSpline(x1, y1, x2, y2, cx1, cy1, cx2, cy2, classname) {
+        let path = svgElement("path");
+        let commands = moveAbs(x1, y1) + cubicSplineAbs(x2, y2, cx1, cy1, cx2, cy2);
+        path.setAttribute("d", commands);
+        if (classname !== undefined) {
+            path.setAttribute("class", classname);
+        }
+        return path;
     }
 
     // Units: inches
@@ -139,7 +167,7 @@ var Stripboard = (function() {
         for (var i = 0; i <= inches * 10; i++) {
             let len = 0.05;
             if (i % 10 == 0) len = 0.1;
-            let path = svgPath(i / 10, 0, i / 10, len);
+            let path = svgLine(i / 10, 0, i / 10, len);
             group.appendChild(path);
         }
         group.setAttribute("class", "horizontal-ruler");
@@ -151,7 +179,7 @@ var Stripboard = (function() {
         for (var i = 0; i <= inches * 10; i++) {
             let len = 0.05;
             if (i % 10 == 0) len = 0.1;
-            let path = svgPath(0, i / 10, len, i / 10);
+            let path = svgLine(0, i / 10, len, i / 10);
             group.appendChild(path);
         }
         group.setAttribute("class", "vertical-ruler");
@@ -243,7 +271,7 @@ var Stripboard = (function() {
             if (this.cuts.length > 0) {
                 let cutsGroup = svgGroup("cuts");
                 for (const cut of this.cuts) {
-                    let cutPath = svgPath(this.pos.x + cut.hole * kStripSize + kStripSize/2, 0,
+                    let cutPath = svgLine(this.pos.x + cut.hole * kStripSize + kStripSize/2, 0,
                                           this.pos.x + cut.hole * kStripSize + kStripSize/2, kStripSize);
                     cutsGroup.appendChild(cutPath);
                 }
@@ -291,10 +319,15 @@ var Stripboard = (function() {
 
     let WirePrototype = {
         makeSvg: function() {
-            let group = svgGroup("wire");
-            let fromPos = this.fromStrip().holePos(this.from.hole);
-            let toPos = this.toStrip().holePos(this.to.hole);
-            let wire = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
+            let group = svgGroup("wire"),
+                fromPos = this.fromStrip().holePos(this.from.hole),
+                toPos = this.toStrip().holePos(this.to.hole),
+                vertical = (fromPos.x == toPos.x),
+                horizontal = (fromPos.y == toPos.y),
+                wire = ((vertical || horizontal) ?
+                            svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y) : 
+                            svgSpline(fromPos.x, fromPos.y, toPos.x, toPos.y,
+                                      fromPos.x, fromPos.y + 0.1, toPos.x - 0.1, toPos.y));
             group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
             group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
             group.appendChild(wire);
@@ -407,9 +440,9 @@ var Stripboard = (function() {
             let group = svgGroup("capacitor");
             let fromPos = this.fromStrip().holePos(this.from.hole);
             let toPos = this.toStrip().holePos(this.to.hole);
-            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
+            let path = svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
             let componentPos = componentPosition(fromPos, toPos, kCapacitorLength);
-            let capacitorPath = svgPath(componentPos.fromPos.x, componentPos.fromPos.y,
+            let capacitorPath = svgLine(componentPos.fromPos.x, componentPos.fromPos.y,
                     componentPos.toPos.x, componentPos.toPos.y,
                     "capacitor-body");
             group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
@@ -435,9 +468,9 @@ var Stripboard = (function() {
             let group = svgGroup("diode");
             let fromPos = this.fromStrip().holePos(this.from.hole);
             let toPos = this.toStrip().holePos(this.to.hole);
-            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
+            let path = svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
             let componentPos = componentPosition(fromPos, toPos, kDiodeLength);
-            let diodePath = svgPath(componentPos.fromPos.x, componentPos.fromPos.y,
+            let diodePath = svgLine(componentPos.fromPos.x, componentPos.fromPos.y,
                     componentPos.toPos.x, componentPos.toPos.y,
                     "diode-body");
             group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
@@ -462,7 +495,7 @@ var Stripboard = (function() {
             let fromPos = this.fromStrip().holePos(this.from.hole);
             let toPos = this.toStrip().holePos(this.to.hole);
             let group = svgGroup("header");
-            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
+            let path = svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y);
             group.appendChild(path);
             return group;
         },
@@ -547,9 +580,9 @@ var Stripboard = (function() {
             let group = svgGroup("led");
             group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
             group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
-            let wirePath = svgPath(fromPos.x, fromPos.y, componentPos.fromPos.x, componentPos.fromPos.y, "wire");
+            let wirePath = svgLine(fromPos.x, fromPos.y, componentPos.fromPos.x, componentPos.fromPos.y, "wire");
             group.appendChild(wirePath);
-            wirePath = svgPath(componentPos.toPos.x, componentPos.toPos.y, toPos.x, toPos.y, "wire");
+            wirePath = svgLine(componentPos.toPos.x, componentPos.toPos.y, toPos.x, toPos.y, "wire");
             group.appendChild(wirePath);
             group.appendChild(body);
             if (this.spec.label !== undefined) {
@@ -571,9 +604,9 @@ var Stripboard = (function() {
             let group = svgGroup("resistor");
             let fromPos = this.fromStrip().holePos(this.from.hole);
             let toPos = this.toStrip().holePos(this.to.hole);
-            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
+            let path = svgLine(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
             let componentPos = componentPosition(fromPos, toPos, kResistorLength);
-            let resistorPath = svgPath(componentPos.fromPos.x, componentPos.fromPos.y,
+            let resistorPath = svgLine(componentPos.fromPos.x, componentPos.fromPos.y,
                     componentPos.toPos.x, componentPos.toPos.y,
                     "resistor-body");
             group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
