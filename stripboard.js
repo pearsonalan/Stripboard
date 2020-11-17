@@ -299,10 +299,6 @@ var Stripboard = (function() {
         }
     }
 
-    const kResistorLength = 0.17;
-    const kCapacitorLength = 0.12;
-    const kLedLength = 0.1;
-    const kLedRadius = 0.12;
 
     let ComponentPrototype = {
         fromStrip: function() {
@@ -313,6 +309,7 @@ var Stripboard = (function() {
         }
     };
 
+    const kResistorLength = 0.17;
     let ResistorPrototype = {
         makeSvg: function() {
             let group = svgGroup("resistor");
@@ -332,6 +329,27 @@ var Stripboard = (function() {
         ...ComponentPrototype
     };
 
+    const kDiodeLength = 0.10;
+    let DiodePrototype = {
+        makeSvg: function() {
+            let group = svgGroup("diode");
+            let fromPos = this.fromStrip().holePos(this.from.hole);
+            let toPos = this.toStrip().holePos(this.to.hole);
+            let path = svgPath(fromPos.x, fromPos.y, toPos.x, toPos.y, "wire");
+            let componentPos = componentPosition(fromPos, toPos, kDiodeLength);
+            let diodePath = svgPath(componentPos.fromPos.x, componentPos.fromPos.y,
+                    componentPos.toPos.x, componentPos.toPos.y,
+                    "diode-body");
+            group.appendChild(svgCircle(fromPos.x, fromPos.y, kFilledHoleRadius));
+            group.appendChild(svgCircle(toPos.x, toPos.y, kFilledHoleRadius));
+            group.appendChild(path);
+            group.appendChild(diodePath);
+            return group;
+        },
+        ...ComponentPrototype
+    };
+
+    const kCapacitorLength = 0.12;
     let CapacitorPrototype = {
         makeSvg: function() {
             let group = svgGroup("capacitor");
@@ -351,6 +369,8 @@ var Stripboard = (function() {
         ...ComponentPrototype
     };
 
+    const kLedLength = 0.1;
+    const kLedRadius = 0.12;
     let LedPrototype = {
         makeSvg: function() {
             let fromPos = this.fromStrip().holePos(this.from.hole);
@@ -448,6 +468,9 @@ var Stripboard = (function() {
             break;
         case "led":
             proto = LedPrototype;
+            break;
+        case "diode":
+            proto = DiodePrototype;
             break;
         case "resistor":
             proto = ResistorPrototype;

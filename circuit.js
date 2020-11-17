@@ -30,6 +30,11 @@ var CIRCUIT = {
             to: "D32"
         },
         {
+            type: "diode",
+            from: "M5",
+            to: "Q5",
+        },
+        {
             type: "header",
             from: "A35",
             to: "D35"

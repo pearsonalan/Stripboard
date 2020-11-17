@@ -68,7 +68,7 @@ svg.stripboard g.components {
 
 
 /**********************************************
-* capacitors
+* Capacitors
 */
 
 svg.stripboard g.components g.capacitor > circle {
@@ -87,6 +87,29 @@ svg.stripboard g.components g.capacitor > path.capacitor-body {
     stroke: orange;
     stroke-width: 13.0;
     stroke-linecap: round;
+}
+
+
+/**********************************************
+* Diodes
+*/
+
+svg.stripboard g.components g.diode > circle {
+    fill: green;
+    stroke: green;
+    stroke-width: 2;
+}
+
+svg.stripboard g.components g.diode > path.wire {
+    stroke: gray;
+    stroke-width: 5.0;
+    stroke-linecap: round;
+}
+
+svg.stripboard g.components g.diode > path.diode-body {
+    stroke: #444444;
+    stroke-width: 8.0;
+    stroke-linecap: square;
 }
 
 
