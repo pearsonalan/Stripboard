@@ -200,6 +200,18 @@ var Stripboard = (function() {
         };
     }
 
+	/******************
+	* Strips
+	*/
+
+    function makeStripName(s) {
+        if (s < 26) {
+            return String.fromCharCode(65 + s);
+        } else {
+            return String.fromCharCode(65 + Math.floor(s / 26) - 1, 65 + (s % 26)) ;
+        }
+    }
+
     // Given a ref or a string return the strip
     function getStrip(ref) {
         if (typeof ref == "string") {
@@ -252,6 +264,24 @@ var Stripboard = (function() {
             },
             cuts: []
         });
+    }
+
+    function makeStrips() {
+        let strips = {};
+        for (let i = 0; i < stripCount; i++) {
+            let name = makeStripName(i);
+            strips[name] = createStrip(name, i);
+        }
+        return strips;
+    }
+
+    function stripsSvg() {
+        let stripGroup = svgGroup();
+        stripGroup.setAttribute("class", "strips");
+        for (const [key, strip] of Object.entries(strips)) {
+            stripGroup.appendChild(strip.makeSvg());
+        }
+        return stripGroup;
     }
 
 
@@ -560,28 +590,6 @@ var Stripboard = (function() {
 
 
 	/******************
-	* Strips
-	*/
-
-    function makeStripName(s) {
-        if (s < 26) {
-            return String.fromCharCode(65 + s);
-        } else {
-            return String.fromCharCode(65 + Math.floor(s / 26) - 1, 65 + (s % 26)) ;
-        }
-    }
-
-    function makeStrips() {
-        let strips = {};
-        for (let i = 0; i < stripCount; i++) {
-            let name = makeStripName(i);
-            strips[name] = createStrip(name, i);
-        }
-        return strips;
-    }
-
-
-	/******************
 	* Background
 	*/
 
@@ -590,12 +598,7 @@ var Stripboard = (function() {
             rect = svgRect(-kBoardPadding, -kBoardPadding, boardWidth + 2 * kBoardPadding, boardHeight + 2 * kBoardPadding);
         backgroundGroup.setAttribute("class", "background");
         backgroundGroup.appendChild(rect);
-        let stripGroup = svgGroup();
-        stripGroup.setAttribute("class", "strips");
-        for (const [key, strip] of Object.entries(strips)) {
-            stripGroup.appendChild(strip.makeSvg());
-        }
-        backgroundGroup.appendChild(stripGroup);
+        backgroundGroup.appendChild(stripsSvg());
         return backgroundGroup;
     }
 
