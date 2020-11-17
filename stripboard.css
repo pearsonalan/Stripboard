@@ -153,7 +153,7 @@ svg.stripboard g.components g.header > path {
 */
 
 svg.stripboard g.components g.ic g.pins circle {
-    fill: yellow;
+    fill: #b6b6b6;
 }
 
 svg.stripboard g.components g.ic > rect.body {
