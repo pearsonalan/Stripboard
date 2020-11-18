@@ -209,8 +209,11 @@ var Stripboard = (function() {
     const kFilledHoleRadius = 0.025;
     const kBoardPadding = 0.02;
 
+    // TODO: Move all of these into a "Board" object so we can have more than one
+    // board on a page.
     let boardWidth = 0;
     let boardHeight = 0;
+    let rows = {};
     let strips = {};
     let wires = [];
     let legend = null;
@@ -219,25 +222,83 @@ var Stripboard = (function() {
     let stripCount = 0;
     let holeCount = 0;
 
-    // A string ref is a string like "A4", "C10", "AD13" that refers
-    // to a hole location. The alpha characters define the strip and
-    // the numeric characters define the hole.
+	/******************
+    * Refs
+    *
+    * A ref specifies the location of a hole on the board.  It can either be a string
+    * ref (like "A4", "C10", "AD13") or a parsed ref, which is a JavaScript object
+    * { row: "A", hole: 4 }
+    * 
+    * The alpha characters specify the row and the numeric characters specify the hole.
+    */
+    
+    // Parse a string ref into a Ref object
     function parseRef(stringRef) {
-        let stripRef = "";
+        let row = "";
         let hole = 0;
         for (let i = 0; i < stringRef.length; i++) {
             let c = stringRef.charCodeAt(i);
             if (c >= 65 && c <= 91) {
-                stripRef += String.fromCharCode(c);
+                row += String.fromCharCode(c);
             } else if (c >= 48 && c <= 57) {
                 hole = parseInt(stringRef.substr(i));
                 break;
             }
         }
         return {
-            strip: stripRef,
+            row: row,
             hole: hole
         };
+    }
+
+
+	/******************
+	* Rows
+	*/
+
+    function makeRowName(r) {
+        if (r < 26) {
+            return String.fromCharCode(65 + r);
+        } else {
+            return String.fromCharCode(65 + Math.floor(r / 26) - 1, 65 + (r % 26)) ;
+        }
+    }
+
+    // Given a ref or a string return the row
+    function getRow(ref) {
+        if (typeof ref == "string") {
+            return rows[ref];
+        }
+        return rows[ref.row];
+    }
+
+    let RowPrototype = {
+        holePos: function(hole) {
+            return {
+                x: this.pos.x + hole * kStripSize + kStripSize / 2,
+                y: this.pos.y + kStripSize / 2
+            };
+        }
+    };
+
+    function createRow(name, r) {
+        return extend(Object.create(RowPrototype), {
+            name: name,
+            row: r,
+            pos: { 
+                x: 0,
+                y: r * kStripSize
+            }
+        });
+    }
+
+    function makeRows(rowCount) {
+        let rows = {};
+        for (let r = 0; r < rowCount; r++) {
+            let name = makeRowName(r);
+            rows[name] = createRow(name, r);
+        }
+        return rows;
     }
 
 	/******************
@@ -257,7 +318,7 @@ var Stripboard = (function() {
         if (typeof ref == "string") {
             return strips[ref];
         }
-        return strips[ref.strip];
+        return strips[ref.row];
     }
 
     // Hander for hover over an element
@@ -560,11 +621,11 @@ var Stripboard = (function() {
         // The IC is defined as being "at" a location which is the top-left
         // pin.  This returns the strip that the top left pin is in.
         atStrip: function() {
-            return getStrip(this.at.strip);
+            return getStrip(this.at);
         },
         // Returns the position (in inches) of the center of the "at" pin
         atPos: function() {
-            return getStrip(this.at.strip).holePos(this.at.hole);
+            return getStrip(this.at).holePos(this.at.hole);
         },
         // Returns the position (in inches) of the top left corner
         topLeftPos() {
@@ -717,9 +778,11 @@ var Stripboard = (function() {
         }
     }
 
+
 	/******************
 	* Legend
     */
+
     let LegendPrototype = {
         makeSvg: function() {
             let group = svgGroup("legend"),
@@ -756,8 +819,11 @@ var Stripboard = (function() {
     function initStripboard(root, circuit) {
         boardHeight = circuit.dimensions.height;
         boardWidth = circuit.dimensions.width;
-        stripCount = Math.floor(boardHeight / kStripSize);
+        let rowCount = Math.floor(boardHeight / kStripSize);
+        stripCount =  rowCount;
         holeCount = Math.floor(boardWidth / kStripSize);
+
+        rows = makeRows(rowCount);
         strips = makeStrips();
         
         legend = makeLegend(0, root.clientHeight - kLegendHeight, root.clientWidth);
