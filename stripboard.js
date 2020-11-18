@@ -545,12 +545,43 @@ var Stripboard = (function() {
         return strips;
     }
 
+    function makeSB4Strips(fullboard) {
+        let strips = [];
+        strips.push(createVerticalStrip("A0", 19));
+        strips.push(createVerticalStrip("A11", 19));
+        strips.push(createVerticalStrip("A12", 19));
+        strips.push(createVerticalStrip("A23", 19));
+        if (fullboard) {
+            strips.push(createVerticalStrip("T0", 19));
+            strips.push(createVerticalStrip("T11", 19));
+            strips.push(createVerticalStrip("T12", 19));
+            strips.push(createVerticalStrip("T23", 19));
+        }
+        for (const [key, row] of Object.entries(rows)) {
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 1), 4));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 5), 2));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 7), 4));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 13), 2));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 15), 2));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 17), 2));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 19), 2));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 21), 2));
+        }
+        return strips;
+    }
+
     function makeStrips(layout) {
         if (layout == "protoboard") {
             return makeProtoboardStrips();
         }
         if (layout == "breadboard") {
             return makeBreadboardStrips();
+        }
+        if (layout == "sb4") {
+            return makeSB4Strips(true);
+        }
+        if (layout == "sb4half") {
+            return makeSB4Strips(false);
         }
         return makeStripboardStrips();
     }
@@ -995,21 +1026,35 @@ var Stripboard = (function() {
     }
 
     function initStripboard(root, circuit) {
+        if (circuit.layout == "sb4") {
+            circuit.dimensions = {
+                width: 2.4,
+                height: 3.8 
+            };
+        }
+        if (circuit.layout == "sb4half") {
+            circuit.dimensions = {
+                width: 2.4,
+                height: 1.9 
+            };
+        }
         boardHeight = circuit.dimensions.height;
         boardWidth = circuit.dimensions.width;
-        rowCount = Math.floor(boardHeight / kStripSize);
-        holeCount = Math.floor(boardWidth / kStripSize);
+        rowCount = Math.floor(boardHeight / kStripSize + kStripSize / 2);
+        holeCount = Math.floor(boardWidth / kStripSize + kStripSize / 2);
 
         rows = makeRows(rowCount);
         strips = makeStrips(circuit.layout);
         
         legend = makeLegend(0, root.clientHeight - kLegendHeight, root.clientWidth);
         
-        // iterate cuts
-        for (const cut of circuit.cuts) {
-            let ref = parseRef(cut);
-            let strip = getStripAtRef(ref);
-            strip.addCut(ref);
+        // Iterate cuts
+        if (circuit.cuts !== undefined) {
+            for (const cut of circuit.cuts) {
+                let ref = parseRef(cut);
+                let strip = getStripAtRef(ref);
+                strip.addCut(ref);
+            }
         }
 
         // Iterate wires
