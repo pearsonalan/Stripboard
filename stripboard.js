@@ -272,7 +272,15 @@ var Stripboard = (function() {
         return rows[ref.row];
     }
 
+    // Given a ref or a string, return the {x,y} coordinates of the center of
+    // the hole at the ref location.
+    function getPoint(ref) {
+        return getRow(ref).holePos(ref.hole);
+    }
+
     let RowPrototype = {
+        // Return the point {x,y} of the center of the given hole in
+        // the row. Holes are centered in the row and in the columns.
         holePos: function(hole) {
             return {
                 x: this.pos.x + hole * kStripSize + kStripSize / 2,
@@ -409,8 +417,8 @@ var Stripboard = (function() {
         },
         makeSvg: function() {
             let group = svgGroup("wire"),
-                from = this.fromStrip().holePos(this.from.hole),
-                to = this.toStrip().holePos(this.to.hole),
+                from = this.fromPoint(),
+                to = this.toPoint(),
                 vertical = (from.x == to.x),
                 horizontal = (from.y == to.y),
                 wire = ((vertical || horizontal) ?
@@ -423,19 +431,25 @@ var Stripboard = (function() {
             return group;
         },
         fromStrip: function() {
-            return getStrip(this.from);
+            return getStrip(this.fromRef);
+        },
+        fromPoint: function() {
+            return getPoint(this.fromRef);
         },
         toStrip: function() {
-            return getStrip(this.to);
-        }
+            return getStrip(this.toRef);
+        },
+        toPoint: function() {
+            return getPoint(this.toRef);
+        },
     };
     
     function createWire(spec) {
         let fromRef = parseRef(spec.from);
         let toRef = parseRef(spec.to);
         return extend(Object.create(WirePrototype), {
-            from: fromRef,
-            to: toRef,
+            fromRef: fromRef,
+            toRef: toRef,
             spec: spec
         });
     }
@@ -476,10 +490,16 @@ var Stripboard = (function() {
             return (this.spec.layer == "back") ? "back" : "front";
         },
         fromStrip: function() {
-            return getStrip(this.from);
+            return getStrip(this.fromRef);
+        },
+        fromPoint: function() {
+            return getPoint(this.fromRef);
         },
         toStrip: function() {
-            return getStrip(this.to);
+            return getStrip(this.toRef);
+        },
+        toPoint: function() {
+            return getPoint(this.toRef);
         },
         labelSvg: function(componentPosition, label) {
             return svgText(componentPosition.center.x, componentPosition.center.y,
@@ -515,8 +535,8 @@ var Stripboard = (function() {
         let fromRef = parseRef(spec.from);
         let toRef = parseRef(spec.to);
         return extend(Object.create(proto), {
-            from: fromRef,
-            to: toRef,
+            fromRef: fromRef,
+            toRef: toRef,
             spec: spec
         });
     }
@@ -530,8 +550,8 @@ var Stripboard = (function() {
     let CapacitorPrototype = {
         makeSvg: function() {
             let group = svgGroup("capacitor");
-            let from = this.fromStrip().holePos(this.from.hole);
-            let to = this.toStrip().holePos(this.to.hole);
+            let from = this.fromPoint();
+            let to = this.toPoint();
             let path = svgLine(from.x, from.y, to.x, to.y, "wire");
             let componentPos = componentPosition(from, to, kCapacitorLength);
             let capacitorPath = svgLine(componentPos.from.x, componentPos.from.y,
@@ -558,8 +578,8 @@ var Stripboard = (function() {
     let DiodePrototype = {
         makeSvg: function() {
             let group = svgGroup("diode");
-            let from = this.fromStrip().holePos(this.from.hole);
-            let to = this.toStrip().holePos(this.to.hole);
+            let from = this.fromPoint();
+            let to = this.toPoint();
             let path = svgLine(from.x, from.y, to.x, to.y, "wire");
             let componentPos = componentPosition(from, to, kDiodeLength);
             let diodePath = svgLine(componentPos.from.x, componentPos.from.y,
@@ -584,8 +604,8 @@ var Stripboard = (function() {
 
     let HeaderPrototype = {
         makeSvg: function() {
-            let from = this.fromStrip().holePos(this.from.hole);
-            let to = this.toStrip().holePos(this.to.hole);
+            let from = this.fromPoint();
+            let to = this.toPoint();
             let group = svgGroup("header");
             let path = svgLine(from.x, from.y, to.x, to.y);
             group.appendChild(path);
@@ -619,20 +639,20 @@ var Stripboard = (function() {
             return group;
         },
         // The IC is defined as being "at" a location which is the top-left
-        // pin.  This returns the strip that the top left pin is in.
-        atStrip: function() {
-            return getStrip(this.at);
+        // pin.  This returns the row that the top left pin is in.
+        atRow: function() {
+            return getRow(this.at);
         },
         // Returns the position (in inches) of the center of the "at" pin
         atPos: function() {
-            return getStrip(this.at).holePos(this.at.hole);
+            return getPoint(this.at);
         },
-        // Returns the position (in inches) of the top left corner
+        // Returns the position (in inches) of the top left corner of the body.
         topLeftPos() {
-            let strip = this.atStrip();
+            let row = this.atRow();
             return {
-                x: strip.pos.x + this.at.hole * kStripSize + kStripSize/2,
-                y: strip.pos.y
+                x: row.pos.x + this.at.hole * kStripSize + kStripSize/2,
+                y: row.pos.y
             };
         },
         // Returns the position (in inches) of the center of pin N, where pin
@@ -669,8 +689,8 @@ var Stripboard = (function() {
     let LedPrototype = {
         makeSvg: function() {
             let group = svgGroup("led"),
-                from = this.fromStrip().holePos(this.from.hole),
-                to = this.toStrip().holePos(this.to.hole),
+                from = this.fromPoint(),
+                to = this.toPoint(),
                 componentPos = componentPosition(from, to, kLedLength),
                 body = svgCircle(componentPos.center.x, componentPos.center.y, kLedRadius, "led-body");
             group.appendChild(svgCircle(from.x, from.y, kFilledHoleRadius));
@@ -697,8 +717,8 @@ var Stripboard = (function() {
     let ResistorPrototype = {
         makeSvg: function() {
             let group = svgGroup("resistor"),
-                from = this.fromStrip().holePos(this.from.hole),
-                to = this.toStrip().holePos(this.to.hole),
+                from = this.fromPoint(),
+                to = this.toPoint(),
                 path = svgLine(from.x, from.y, to.x, to.y, "wire"),
                 componentPos = componentPosition(from, to, kResistorLength),
                 resistorPath = svgLine(componentPos.from.x, componentPos.from.y,
