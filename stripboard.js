@@ -545,8 +545,8 @@ var Stripboard = (function() {
             return this.spec.layer == "back" ? "back" : "front";
         },
         makeSvg: function() {
-            let group = svgGroup("ic");
-            let pinsGroup = svgGroup("pins");
+            let group = svgGroup("ic"),
+                pinsGroup = svgGroup("pins");
             for (let i = 0; i < this.pins; i++) {
                 let pinPos = this.pinPos(i),
                     pinSvg = svgCircle(pinPos.x, pinPos.y, kICPinRadius);
@@ -608,11 +608,11 @@ var Stripboard = (function() {
     const kLedRadius = 0.12;
     let LedPrototype = {
         makeSvg: function() {
-            let from = this.fromStrip().holePos(this.from.hole);
-            let to = this.toStrip().holePos(this.to.hole);
-            let componentPos = componentPosition(from, to, kLedLength);
-            let body = svgCircle(componentPos.center.x, componentPos.center.y, kLedRadius, "led-body");
-            let group = svgGroup("led");
+            let group = svgGroup("led"),
+                from = this.fromStrip().holePos(this.from.hole),
+                to = this.toStrip().holePos(this.to.hole),
+                componentPos = componentPosition(from, to, kLedLength),
+                body = svgCircle(componentPos.center.x, componentPos.center.y, kLedRadius, "led-body");
             group.appendChild(svgCircle(from.x, from.y, kFilledHoleRadius));
             group.appendChild(svgCircle(to.x, to.y, kFilledHoleRadius));
             let wirePath = svgLine(from.x, from.y, componentPos.from.x, componentPos.from.y, "wire");
@@ -636,14 +636,14 @@ var Stripboard = (function() {
     const kResistorLength = 0.17;
     let ResistorPrototype = {
         makeSvg: function() {
-            let group = svgGroup("resistor");
-            let from = this.fromStrip().holePos(this.from.hole);
-            let to = this.toStrip().holePos(this.to.hole);
-            let path = svgLine(from.x, from.y, to.x, to.y, "wire");
-            let componentPos = componentPosition(from, to, kResistorLength);
-            let resistorPath = svgLine(componentPos.from.x, componentPos.from.y,
-                    componentPos.to.x, componentPos.to.y,
-                    "resistor-body");
+            let group = svgGroup("resistor"),
+                from = this.fromStrip().holePos(this.from.hole),
+                to = this.toStrip().holePos(this.to.hole),
+                path = svgLine(from.x, from.y, to.x, to.y, "wire"),
+                componentPos = componentPosition(from, to, kResistorLength),
+                resistorPath = svgLine(componentPos.from.x, componentPos.from.y,
+                        componentPos.to.x, componentPos.to.y,
+                        "resistor-body");
             group.appendChild(svgCircle(from.x, from.y, kFilledHoleRadius));
             group.appendChild(svgCircle(to.x, to.y, kFilledHoleRadius));
             group.appendChild(path);
@@ -671,9 +671,9 @@ var Stripboard = (function() {
     }
 
     function wiresSvg() {
-        let wiresGroup = svgGroup("wires");
-        let front = svgGroup("front");
-        let back = svgGroup("back");
+        let wiresGroup = svgGroup("wires"),
+            front = svgGroup("front"),
+            back = svgGroup("back");
         wiresGroup.appendChild(front);
         wiresGroup.appendChild(back);
         for (const wire of wires) {
@@ -687,9 +687,9 @@ var Stripboard = (function() {
     }
     
     function componentsSvg() {
-        let group = svgGroup("components");
-        let front = svgGroup("front");
-        let back = svgGroup("back");
+        let group = svgGroup("components"),
+            front = svgGroup("front"),
+            back = svgGroup("back");
         group.appendChild(front);
         group.appendChild(back);
         for (const component of components) {
@@ -723,8 +723,8 @@ var Stripboard = (function() {
     */
     let LegendPrototype = {
         makeSvg: function() {
-            let group = svgGroup("legend");
-            let background = svgRectPx(0, 0, this.width, this.height, "background");
+            let group = svgGroup("legend"),
+                background = svgRectPx(0, 0, this.width, this.height, "background");
             group.appendChild(background);
             this.textSvgEl = svgTextPx(4, this.height - 4, "", "hover");
             group.appendChild(this.textSvgEl);
