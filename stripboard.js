@@ -262,7 +262,6 @@ var Stripboard = (function() {
 
     // Hander for hover over an element
     function onHover(text, el, event) {
-        console.log("HOVER: " + text);
         legend.setHoverContent(text);
     }
 
@@ -794,16 +793,17 @@ var Stripboard = (function() {
         root.appendChild(legend.makeSvg());
     }
 
+    // Initialize all SVG elements with class "stribpoard" to show the
+    // given circuit... It is probably a silly function
+    function initAll(circuit) {
+        $ALL("svg.stripboard").forEach((el) => {
+            console.log("initializing stripboard ", el);
+            initStripboard(el, circuit);
+        });
+    }
+    
     return {
-        getStrips: function() { return strips; },
-        getStrip: getStrip,
-        getWires: function() { return wires; },
-        parseRef: parseRef,
-        init: function(circuit) {
-            $ALL("svg.stripboard").forEach((el) => {
-                console.log("initializing stripboard ", el);
-                initStripboard(el, circuit);
-            });
-        }
+        init: initStripboard,
+        initAll: initAll
     };
 })();
