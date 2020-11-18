@@ -128,6 +128,7 @@ var Stripboard = (function() {
         }
         return rect;
     }
+
     // Units: inches
     function svgCircle(x, y, radius, classname) {
         let circle = svgElement("circle");
@@ -176,6 +177,7 @@ var Stripboard = (function() {
         let group = svgGroup();
         for (var i = 0; i <= inches * 10; i++) {
             let len = 0.05;
+            if (i % 5 == 0) len = 0.065;
             if (i % 10 == 0) len = 0.1;
             let path = svgLine(i / 10, 0, i / 10, len);
             group.appendChild(path);
@@ -188,6 +190,7 @@ var Stripboard = (function() {
         let group = svgGroup();
         for (var i = 0; i <= inches * 10; i++) {
             let len = 0.05;
+            if (i % 5 == 0) len = 0.065;
             if (i % 10 == 0) len = 0.1;
             let path = svgLine(0, i / 10, len, i / 10);
             group.appendChild(path);
@@ -214,12 +217,13 @@ var Stripboard = (function() {
     let boardWidth = 0;
     let boardHeight = 0;
     let rows = {};
-    let strips = {};
+    let strips = [];
+    let refToStrip = {};
     let wires = [];
     let legend = null;
     let board = null;
     let components = [];
-    let stripCount = 0;
+    let rowCount = 0;
     let holeCount = 0;
 
 	/******************
@@ -235,11 +239,13 @@ var Stripboard = (function() {
     // Parse a string ref into a Ref object
     function parseRef(stringRef) {
         let row = "";
+        let r = 0;
         let hole = 0;
         for (let i = 0; i < stringRef.length; i++) {
             let c = stringRef.charCodeAt(i);
             if (c >= 65 && c <= 91) {
                 row += String.fromCharCode(c);
+                r = (r * 26) + (c - 65 + 1);
             } else if (c >= 48 && c <= 57) {
                 hole = parseInt(stringRef.substr(i));
                 break;
@@ -247,16 +253,45 @@ var Stripboard = (function() {
         }
         return {
             row: row,
+            r: r - 1,
             hole: hole
         };
     }
 
+    // Return a parsed ref for the given ref
+    function REF(ref) {
+        if (typeof ref == "string") {
+            return parseRef(ref);
+        }
+        return ref;
+    }
+    
+    // Return a text ref for the given ref
+    function TREF(ref) {
+        if (typeof ref == "string") {
+            return ref;
+        }
+        return ref.row + ref.hole;
+    }
+
+    // Given a ref, return a ref which is offset a given number of rows or
+    // columns
+    function offsetRef(ref, rows, cols) {
+        let newref = {...REF(ref)};
+        newref.r += rows;
+        newref.hole += cols;
+        newref.row = makeRowName(newref.r);
+        return newref;
+    }
 
 	/******************
 	* Rows
 	*/
 
     function makeRowName(r) {
+        if (r < 0 || r >= 26*26) {
+            throw `Invalid row ${r} in makeRowName`;
+        }
         if (r < 26) {
             return String.fromCharCode(65 + r);
         } else {
@@ -264,27 +299,29 @@ var Stripboard = (function() {
         }
     }
 
-    // Given a ref or a string return the row
-    function getRow(ref) {
-        if (typeof ref == "string") {
-            return rows[ref];
-        }
-        return rows[ref.row];
-    }
-
-    // Given a ref or a string, return the {x,y} coordinates of the center of
-    // the hole at the ref location.
-    function getPoint(ref) {
-        return getRow(ref).holePos(ref.hole);
-    }
-
     let RowPrototype = {
-        // Return the point {x,y} of the center of the given hole in
+        // Return the point {x,y} of the center of the hole in column c of
         // the row. Holes are centered in the row and in the columns.
-        holePos: function(hole) {
+        holePos: function(c) {
             return {
-                x: this.pos.x + hole * kStripSize + kStripSize / 2,
+                x: this.pos.x + c * kStripSize + kStripSize / 2,
                 y: this.pos.y + kStripSize / 2
+            };
+        },
+        // Return the point {x,y} of the top-left corner of column c of
+        // the row.
+        getPos: function(c) {
+            return {
+                x: this.pos.x + c * kStripSize,
+                y: this.pos.y
+            };
+        },
+        // Return a ref representing the first (left-most) hole in the row
+        startRef: function() {
+            return {
+                row: this.name,
+                r: this.row,
+                hole: 0
             };
         }
     };
@@ -309,25 +346,40 @@ var Stripboard = (function() {
         return rows;
     }
 
+    // Given a ref or a string return the row
+    function getRow(ref) {
+        let pref = REF(ref);
+        return rows[pref.row];
+    }
+
+    // Given a ref or a string, return the {x,y} coordinates of the center of
+    // the hole at the ref location.
+    function getPoint(ref) {
+        let pref = REF(ref);
+        return getRow(pref).holePos(pref.hole);
+    }
+
+    function HOLE(ref) {
+        let pref = REF(ref);
+        return getRow(pref).holePos(pref.hole);
+    }
+
+    function POS(ref) {
+        let pref = REF(ref);
+        return getRow(pref).getPos(pref.hole);
+    }
+
 	/******************
 	* Strips
 	*/
 
-    function makeStripName(s) {
-        if (s < 26) {
-            return String.fromCharCode(65 + s);
-        } else {
-            return String.fromCharCode(65 + Math.floor(s / 26) - 1, 65 + (s % 26)) ;
-        }
-    }
-
     // Given a ref or a string return the strip
-    function getStrip(ref) {
-        if (typeof ref == "string") {
-            return strips[ref];
-        }
-        return strips[ref.row];
-    }
+    // function getStrip(ref) {
+    //     if (typeof ref == "string") {
+    //         return strips[ref];
+    //     }
+    //     return strips[ref.row];
+    // }
 
     // Hander for hover over an element
     function onHover(text, el, event) {
@@ -341,23 +393,24 @@ var Stripboard = (function() {
     let StripPrototype = {
         addCut: function(cut) {
             this.cuts.push(cut);
-        },
-        holePos: function(hole) {
-            return {
-                x: this.pos.x + hole * kStripSize + kStripSize / 2,
-                y: this.pos.y + kStripSize / 2
-            };
-        },
+        }
+    };
+
+    let HorizontalStripPrototype = {
         makeSvg: function() {
             let group = svgGroup("strip"),
-                rect = svgRect(kStripPadding, kStripPadding, boardWidth - 2 * kStripPadding , kStripWidth);
-            rect.addEventListener("mouseover", onHover.curry("STRIP " + this.name, rect));
+                rect = svgRect(kStripPadding,
+                               kStripPadding,
+                               this.holes * kStripSize - 2 * kStripPadding,
+                               kStripWidth);
+            rect.addEventListener("mouseover", onHover.curry(`STRIP ${TREF(this.startRef)}:${TREF(this.endRef)}`, rect));
             rect.addEventListener("mouseleave", onMouseLeave);
             group.appendChild(rect);
+
             let holesGroup = svgGroup("holes");
-            for (var n = 0; n < holeCount; n += 1) {
+            for (var n = 0; n < this.holes; n += 1) {
                 let hole = svgCircle(n * kStripSize + kStripSize / 2, kStripSize / 2, kHoleRadius);
-                hole.addEventListener("mouseover", onHover.curry("HOLE " + this.name + n, hole));
+                hole.addEventListener("mouseover", onHover.curry(`HOLE ${TREF(offsetRef(this.startRef, 0, n))}`, hole));
                 hole.addEventListener("mouseleave", onMouseLeave);
                 holesGroup.appendChild(hole);
             }
@@ -365,42 +418,147 @@ var Stripboard = (function() {
             if (this.cuts.length > 0) {
                 let cutsGroup = svgGroup("cuts");
                 for (const cut of this.cuts) {
-                    let cutPath = svgLine(this.pos.x + cut.hole * kStripSize + kStripSize/2, 0,
-                                          this.pos.x + cut.hole * kStripSize + kStripSize/2, kStripSize);
+                    let cutPos = POS(cut);
+                    let cutPath = svgLine(cutPos.x - this.pos.x + kStripSize/2,
+                                          0,
+                                          cutPos.x - this.pos.x + kStripSize/2,
+                                          kStripSize);
                     cutsGroup.appendChild(cutPath);
                 }
                 group.appendChild(cutsGroup);
             }
             return translate(group, this.pos.x, this.pos.y);
-        }
+        },
+        ...StripPrototype
     }
 
-    function createStrip(name, row) {
-        let strip = Object.create(StripPrototype);
-        return extend(strip, {
-            name: name,
-            row: row,
-            pos: { 
-                x: 0,
-                y: row * kStripSize
-            },
+    function createHorizontalStrip(startRef, holes) {
+        let strip = extend(Object.create(HorizontalStripPrototype), {
+            startRef: REF(startRef),
+            endRef: offsetRef(startRef, 0, holes - 1),
+            holes: holes,
+            pos: POS(startRef),
             cuts: []
         });
+        
+        for (let i = 0; i < holes; i++) {
+            let ref = TREF(offsetRef(startRef, 0, i));
+            refToStrip[ref] = strip;
+        }
+
+        return strip;
     }
 
-    function makeStrips() {
-        let strips = {};
-        for (let i = 0; i < stripCount; i++) {
-            let name = makeStripName(i);
-            strips[name] = createStrip(name, i);
+    let VerticalStripPrototype = {
+        makeSvg: function() {
+            let group = svgGroup("strip"),
+                rect = svgRect(kStripPadding,
+                               kStripPadding,
+                               kStripWidth,
+                               this.holes * kStripSize - 2 * kStripPadding);
+            rect.addEventListener("mouseover", onHover.curry(`STRIP ${TREF(this.startRef)}:${TREF(this.endRef)}`, rect));
+            rect.addEventListener("mouseleave", onMouseLeave);
+            group.appendChild(rect);
+
+            let holesGroup = svgGroup("holes");
+            for (var n = 0; n < this.holes; n += 1) {
+                let hole = svgCircle(kStripSize / 2, n * kStripSize + kStripSize / 2, kHoleRadius);
+                hole.addEventListener("mouseover", onHover.curry(`HOLE ${TREF(offsetRef(this.startRef, n, 0))}`, hole));
+                hole.addEventListener("mouseleave", onMouseLeave);
+                holesGroup.appendChild(hole);
+            }
+            group.appendChild(holesGroup);
+            if (this.cuts.length > 0) {
+                let cutsGroup = svgGroup("cuts");
+                for (const cut of this.cuts) {
+                    let cutPos = POS(cut);
+                    let cutPath = svgLine(0,
+                                          cutPos.y - this.pos.y + kStripSize/2,
+                                          kStripSize,
+                                          cutPos.y - this.pos.y + kStripSize/2);
+                    cutsGroup.appendChild(cutPath);
+                }
+                group.appendChild(cutsGroup);
+            }
+            return translate(group, this.pos.x, this.pos.y);
+        },
+        ...StripPrototype
+    }
+
+    function createVerticalStrip(startRef, holes) {
+        let strip = extend(Object.create(VerticalStripPrototype), {
+            startRef: REF(startRef),
+            endRef: offsetRef(startRef, holes - 1, 0),
+            holes: holes,
+            pos: POS(startRef),
+            cuts: []
+        });
+        
+        for (let i = 0; i < holes; i++) {
+            let ref = TREF(offsetRef(startRef, i, 0));
+            refToStrip[ref] = strip;
+        }
+
+        return strip;
+    }
+
+    function getStripAtRef(ref) {
+        if (typeof ref != "string") {
+            ref = ref.row + ref.hole;
+        }
+        return refToStrip[ref];
+    }
+    
+    // Stripboard strips are horizontal strips, one per row
+    function makeStripboardStrips() {
+        let strips = [];
+        for (const [key, row] of Object.entries(rows)) {
+            strips.push(createHorizontalStrip(row.startRef(), holeCount));
         }
         return strips;
+    }
+
+    // Protoboard strips have vertical busses on each side with horizontal strips
+    // in the middle.
+    function makeProtoboardStrips() {
+        let strips = [];
+        strips.push(createVerticalStrip("A0", rowCount));
+        strips.push(createVerticalStrip(offsetRef("A0", 0, holeCount-1), rowCount));
+        for (const [key, row] of Object.entries(rows)) {
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 1), holeCount - 2));
+        }
+        return strips;
+    }
+
+    // Protoboard strips have 2 vertical busses on each side with horizontal strips
+    // in the middle and a gap.
+    function makeBreadboardStrips() {
+        let strips = [];
+        strips.push(createVerticalStrip("A0", rowCount));
+        strips.push(createVerticalStrip("A1", rowCount));
+        for (const [key, row] of Object.entries(rows)) {
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 2), 5));
+            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 9), 5));
+        }
+        strips.push(createVerticalStrip("A14", rowCount));
+        strips.push(createVerticalStrip("A15", rowCount));
+        return strips;
+    }
+
+    function makeStrips(layout) {
+        if (layout == "protoboard") {
+            return makeProtoboardStrips();
+        }
+        if (layout == "breadboard") {
+            return makeBreadboardStrips();
+        }
+        return makeStripboardStrips();
     }
 
     function stripsSvg() {
         let stripGroup = svgGroup();
         stripGroup.setAttribute("class", "strips");
-        for (const [key, strip] of Object.entries(strips)) {
+        for (const strip of strips) {
             stripGroup.appendChild(strip.makeSvg());
         }
         return stripGroup;
@@ -430,15 +588,15 @@ var Stripboard = (function() {
             group.appendChild(wire);
             return group;
         },
-        fromStrip: function() {
-            return getStrip(this.fromRef);
-        },
+        // fromStrip: function() {
+        //     return getStrip(this.fromRef);
+        // },
         fromPoint: function() {
             return getPoint(this.fromRef);
         },
-        toStrip: function() {
-            return getStrip(this.toRef);
-        },
+        // toStrip: function() {
+        //     return getStrip(this.toRef);
+        // },
         toPoint: function() {
             return getPoint(this.toRef);
         },
@@ -489,15 +647,15 @@ var Stripboard = (function() {
         layer: function() {
             return (this.spec.layer == "back") ? "back" : "front";
         },
-        fromStrip: function() {
-            return getStrip(this.fromRef);
-        },
+        // fromStrip: function() {
+        //     return getStrip(this.fromRef);
+        // },
         fromPoint: function() {
             return getPoint(this.fromRef);
         },
-        toStrip: function() {
-            return getStrip(this.toRef);
-        },
+        // toStrip: function() {
+        //     return getStrip(this.toRef);
+        // },
         toPoint: function() {
             return getPoint(this.toRef);
         },
@@ -839,19 +997,18 @@ var Stripboard = (function() {
     function initStripboard(root, circuit) {
         boardHeight = circuit.dimensions.height;
         boardWidth = circuit.dimensions.width;
-        let rowCount = Math.floor(boardHeight / kStripSize);
-        stripCount =  rowCount;
+        rowCount = Math.floor(boardHeight / kStripSize);
         holeCount = Math.floor(boardWidth / kStripSize);
 
         rows = makeRows(rowCount);
-        strips = makeStrips();
+        strips = makeStrips(circuit.layout);
         
         legend = makeLegend(0, root.clientHeight - kLegendHeight, root.clientWidth);
         
         // iterate cuts
         for (const cut of circuit.cuts) {
             let ref = parseRef(cut);
-            let strip = getStrip(ref);
+            let strip = getStripAtRef(ref);
             strip.addCut(ref);
         }
 
@@ -890,6 +1047,11 @@ var Stripboard = (function() {
     
     return {
         init: initStripboard,
-        initAll: initAll
+        initAll: initAll,
+
+        POS: POS,
+        HOLE: HOLE,
+        getRow: getRow,
+        REF: REF
     };
 })();

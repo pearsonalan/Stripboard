@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Protoboard</title>
+        <script src="../stripboard.js" lang="javascript"></script>
+        <link href="../reset.css" rel="stylesheet">
+        <link href="../style.css" rel="stylesheet">
+        <link href="../stripboard.css" rel="stylesheet">
+    </head>
+    <body>
+        <script lang="javascript">
+var CIRCUIT = {
+    layout: "breadboard",
+    dimensions: {
+        width: 1.6,
+        height: 2.0
+    },
+    cuts: [],
+    wires: [
+        { from: "A0", to: "A2"},
+        { from: "B1", to: "B2"},
+        { from: "E5", to: "F5"},
+        { from: "C6", to: "E6"}
+    ],
+    components: [
+        {
+            label: "R1",
+            type: "resistor",
+            from: "E0",
+            to: "E4",
+        },
+        {
+            label: "R2",
+            type: "resistor",
+            from: "F1",
+            to: "F4",
+        },
+        {
+            type: "header",
+            from: "A4",
+            to: "C4",
+        },
+        { 
+            type: "ic",
+            pins: 8,
+            width: 3,
+            at: "K6"
+        }
+    ]
+};
+
+window.addEventListener("DOMContentLoaded", function() {
+    Stripboard.init($ID("stripboard"), CIRCUIT);
+});
+        </script>
+        <h1>Single Bread Board</h1>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            id="stripboard" class="stripboard"></svg>
+    </body>
+</html>
