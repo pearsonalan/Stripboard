@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Protoboard</title>
+        <script src="../stripboard.js" lang="javascript"></script>
+        <link href="../reset.css" rel="stylesheet">
+        <link href="../stripboard.css" rel="stylesheet">
+        <style>
+body {
+    margin: 8px;
+}
+
+h1 {
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: 18px;
+}
+
+svg {
+    border: 1px solid black;
+}
+
+svg#stripboard {
+    width: 440px;
+    height: 640px;
+}
+        </style>
+    </head>
+    <body>
+        <script lang="javascript">
+var CIRCUIT = {
+    layout: "sb4",
+    wires: [
+        { from: "G0", to: "G1"},
+        { from: "A0", to: "A1"},
+        { from: "H8", to: "H9"},
+        { from: "B8", to: "B9"},
+        { from: "I3", to: "E3", layer: "back" }
+    ],
+    components: [
+        {
+            label: "R1",
+            type: "resistor",
+            from: "A2",
+            to: "E2",
+        },
+        {
+            label: "R2",
+            type: "resistor",
+            from: "B4",
+            to: "E4",
+        },
+        {
+            type: "header",
+            from: "G2",
+            to: "I2",
+        }
+    ]
+};
+
+window.addEventListener("DOMContentLoaded", function() {
+    Stripboard.init($ID("stripboard"), CIRCUIT);
+});
+        </script>
+        <h1>SB4 Protoboard</h1>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            id="stripboard" class="stripboard"></svg>
+    </body>
+</html>
