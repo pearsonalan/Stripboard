@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Spans test</title>
+        <script src="../stripboard.js" lang="javascript"></script>
+        <link href="../reset.css" rel="stylesheet">
+        <link href="../stripboard.css" rel="stylesheet">
+    </head>
+    <body>
+        <script lang="javascript">
+var CIRCUIT = {
+    layout: "sb4half",
+    cuts: ['A3', 'H0', 'F23', 'B6', 'C5', 'D5', 'D6',
+           'E1', 'F1', 'F2', 'D11', 'G11']
+};
+
+window.addEventListener("DOMContentLoaded", function() {
+    Stripboard.init($ID("stripboard"), CIRCUIT);
+});
+        </script>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            id="stripboard" class="stripboard" width="440" height="380"></svg>
+    </body>
+</html>
