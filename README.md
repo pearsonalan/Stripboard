@@ -29,11 +29,6 @@ This circuit layout is defined as:
 let CIRCUIT = {
     dimensions: { width: 1.5, height: 0.8 },
     wires: [ { from: "C3", to: "E3" } ],
-    nets: {
-        "A0": "Vin",
-        "B0": "GND",
-        "C0": "Vout"
-    },
     components: [
         { type: "header", from: "A1", to: "C1" },
         { label: "R1", type: "resistor", from: "A5", to: "E5", },
@@ -42,10 +37,10 @@ let CIRCUIT = {
 };
 ```
 
-The stripboard layout is:
+The rendered stripboard layout is:
 
 ![Circuit](images/low-pass-filter.png)
 
 The Header element in column 1 (the first column is column 0) would include Vin, GND and Vout pins.
-The Resistor in column 5 is between Vin and Vout, and the Capacitor in column 7 sits between GND and
-Vout.
+The Resistor in column 5 is between Vin and Vout (connected to the Vout pin by the wire of column
+3), and the Capacitor in column 7 sits between GND and Vout.
