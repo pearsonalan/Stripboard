@@ -679,6 +679,31 @@ var Stripboard = (function() {
         return strips;
     }
 
+    function makeSB4HorizStrips(fullboard) {
+        let strips = [];
+        strips.push(createHorizontalStrip("A0", 19));
+        strips.push(createHorizontalStrip("L0", 19));
+        strips.push(createHorizontalStrip("M0", 19));
+        strips.push(createHorizontalStrip("X0", 19));
+        if (fullboard) {
+            strips.push(createHorizontalStrip("A19", 19));
+            strips.push(createHorizontalStrip("L19", 19));
+            strips.push(createHorizontalStrip("M19", 19));
+            strips.push(createHorizontalStrip("X19", 19));
+        }
+        for (let c = 0; c < holeCount; c++) {
+            strips.push(createVerticalStrip("B"+c, 4));
+            strips.push(createVerticalStrip("F"+c, 2));
+            strips.push(createVerticalStrip("H"+c, 4));
+            strips.push(createVerticalStrip("N"+c, 2));
+            strips.push(createVerticalStrip("P"+c, 2));
+            strips.push(createVerticalStrip("R"+c, 2));
+            strips.push(createVerticalStrip("T"+c, 2));
+            strips.push(createVerticalStrip("V"+c, 2));
+        }
+        return strips;
+    }
+
     function makeStrips(layout) {
         if (layout == "protoboard") {
             return makeProtoboardStrips();
@@ -688,6 +713,9 @@ var Stripboard = (function() {
         }
         if (layout == "sb4") {
             return makeSB4Strips(true);
+        }
+        if (layout == "sb4-horiz") {
+            return makeSB4HorizStrips(true);
         }
         if (layout == "sb4half") {
             return makeSB4Strips(false);
@@ -1496,6 +1524,12 @@ var Stripboard = (function() {
             circuit.dimensions = {
                 width: 2.4,
                 height: 3.8
+            };
+        }
+        if (circuit.layout == "sb4-horiz") {
+            circuit.dimensions = {
+                width: 3.8,
+                height: 2.4 
             };
         }
         if (circuit.layout == "sb4half") {
