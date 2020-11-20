@@ -1463,6 +1463,34 @@ var Stripboard = (function() {
         });
     }
 
+    function onMouseMove(event) {
+        let rect = this.getBoundingClientRect(),
+            x = event.clientX - rect.left,
+            y = event.clientY - rect.top;
+        let pos = {
+            x: toInches(x),
+            y: toInches(y)
+        }
+        if (view == "BACK") {
+            // handle view being flipped
+            pos.x = boardWidth - pos.x;
+        }
+        let posText = `[${pos.x.toFixed(2)},${pos.y.toFixed(2)}]`;
+        let ref = refAtPos(pos);
+        let net = undefined;
+        if (ref !== undefined) {
+            let tref = TREF(ref);
+            posText = posText + " " + tref;
+            net = getNetAtRef(tref);
+        }
+        legend.setPositionContent(posText);
+        if (net === undefined) {
+            legend.setNetContent("");
+        } else {
+            legend.setNetContent(`NET: ${net.name}`);
+        }
+    }
+
     function initStripboard(root, circuit) {
         if (circuit.layout == "sb4") {
             circuit.dimensions = {
@@ -1540,29 +1568,7 @@ var Stripboard = (function() {
         root.appendChild(view);
         root.appendChild(legend.makeSvg());
 
-        board.addEventListener("mousemove", function (event) {
-            let rect = this.getBoundingClientRect(),
-                x = event.clientX - rect.left,
-                y = event.clientY - rect.top;
-            let pos = {
-                x: toInches(x),
-                y: toInches(y)
-            }
-            let posText = `[${pos.x.toFixed(2)},${pos.y.toFixed(2)}]`;
-            let ref = refAtPos(pos);
-            let net = undefined;
-            if (ref !== undefined) {
-                let tref = TREF(ref);
-                posText = posText + " " + tref;
-                net = getNetAtRef(tref);
-            }
-            legend.setPositionContent(posText);
-            if (net === undefined) {
-                legend.setNetContent("");
-            } else {
-                legend.setNetContent(`NET: ${net.name}`);
-            }
-        }.bind(board));
+        board.addEventListener("mousemove", onMouseMove.bind(board));
 
         view.addEventListener("mouseleave", function (event) {
             legend.setPositionContent("");
