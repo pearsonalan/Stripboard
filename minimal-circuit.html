@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="stripboard.js" lang="javascript"></script>
+<link href="stripboard.css" rel="stylesheet">
+<script lang="javascript">
+let CIRCUIT = {
+    dimensions: {
+        width: 1.5,
+        height: 0.8
+    },
+    wires: [
+        { from: "C3", to: "E3" }
+    ],
+    nets: {
+        "A0": "Vin",
+        "B0": "GND",
+        "C0": "Vout"
+    },
+    components: [
+        {
+            type: "header",
+            from: "A1",
+            to: "C1"
+        },
+        {
+            label: "R1",
+            type: "resistor",
+            from: "A5",
+            to: "E5",
+        },
+        {
+            label: "C1",
+            type: "capacitor",
+            from: "B7",
+            to: "E7",
+        },
+    ]
+};
+window.addEventListener("DOMContentLoaded", function() {
+    Stripboard.init($ID("stripboard"), CIRCUIT);
+});
+</script>
+</head>
+<body>
+    <h1>Stripboard</h1>
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+        id="stripboard" class="stripboard" width="400" height="300"></svg>
+</body>
+</html>
