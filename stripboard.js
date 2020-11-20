@@ -723,6 +723,9 @@ var Stripboard = (function() {
             }
             return this.strip.nextRef(ref);
         },
+        addComponent: function(component) {
+            this.components.push(component);
+        },
         addWire: function(wire) {
             this.wires.push(wire);
         },
@@ -938,6 +941,23 @@ var Stripboard = (function() {
         layer: function() {
             return (this.spec.layer == "back") ? "back" : "front";
         },
+        addToSpans: function() {
+            if (this.getSpans === undefined) {
+                console.log("getSpans is not defined on ", this);
+                return;
+            }
+            for (const span of this.getSpans()) {
+                span.addComponent(this);
+            }
+        },
+        labelSvg: function(componentPosition, label) {
+            return svgText(componentPosition.center.x, componentPosition.center.y,
+                    label, "label");
+        }
+    };
+
+    // Prototype for compnents that connect two Refs (such as a Resistor or Capacitor)
+    let PointToPointComponentPrototype = {
         fromStrip: function() {
             return getStripAtRef(this.fromRef);
         },
@@ -956,10 +976,10 @@ var Stripboard = (function() {
         toPoint: function() {
             return getPoint(this.toRef);
         },
-        labelSvg: function(componentPosition, label) {
-            return svgText(componentPosition.center.x, componentPosition.center.y,
-                    label, "label");
-        }
+        getSpans: function() {
+            return [this.fromSpan(), this.toSpan()];
+        },
+        ...ComponentPrototype
     };
 
     function createComponent(spec) {
@@ -1024,7 +1044,7 @@ var Stripboard = (function() {
             }
             return group;
         },
-        ...ComponentPrototype
+        ...PointToPointComponentPrototype
     };
 
 
@@ -1052,7 +1072,7 @@ var Stripboard = (function() {
             }
             return group;
         },
-        ...ComponentPrototype
+        ...PointToPointComponentPrototype
     };
 
 
@@ -1061,6 +1081,49 @@ var Stripboard = (function() {
     */
 
     let HeaderPrototype = {
+        nextRef: function(ref) {
+            let pref = REF(ref),
+                sref = REF(this.fromRef),
+                eref = REF(this.toRef);
+            if (sref.row == eref.row) {
+                // header is horzontal -- increment hole
+                if (pref.row !== sref.row) return undefined;
+                if (pref.hole < sref.hole || pref.hole == eref.hole) return undefined;
+                return {
+                    row: pref.row,
+                    r: pref.r,
+                    hole: pref.hole + 1
+                };
+            } else {
+                // header is vertical -- increment row
+                if (pref.hole !== sref.hole) return undefined;
+                if (pref.r < sref.r || pref.r == eref.r) return undefined;
+                return {
+                    row: makeRowName(pref.r + 1),
+                    r: pref.r + 1,
+                    hole: pref.hole
+                };
+            }
+        },
+        getPins: function() {
+            let pins = [];
+            for (let ref = REF(this.fromRef); ref !== undefined; ref = this.nextRef(ref)) {
+                pins.push(ref);
+            }
+            return pins;
+        },
+        getSpans: function() {
+            return this.getPins().reduce(function(acc, value) {
+                 acc.push(getSpanAtRef(value));
+                 return acc;
+            }, []);
+        },
+        fromPoint: function() {
+            return getPoint(this.fromRef);
+        },
+        toPoint: function() {
+            return getPoint(this.toRef);
+        },
         makeSvg: function() {
             let from = this.fromPoint();
             let to = this.toPoint();
@@ -1079,13 +1142,10 @@ var Stripboard = (function() {
 
     const kICPinRadius = 0.04;
     let ICPrototype = {
-        layer: function() {
-            return this.spec.layer == "back" ? "back" : "front";
-        },
         makeSvg: function() {
             let group = svgGroup("ic"),
                 pinsGroup = svgGroup("pins");
-            for (let i = 0; i < this.pins; i++) {
+            for (let i = 0; i < this.pinCount; i++) {
                 let pinPos = this.pinPos(i),
                     pinSvg = svgCircle(pinPos.x, pinPos.y, kICPinRadius);
                 pinsGroup.appendChild(pinSvg);
@@ -1105,6 +1165,19 @@ var Stripboard = (function() {
         atPos: function() {
             return getPoint(this.at);
         },
+        getPins: function() {
+            let pins = [];
+            for (let i = 0; i < this.pinCount; i++) {
+                pins.push(this.pinRef(i));
+            }
+            return pins;
+        },
+        getSpans: function() {
+            return this.getPins().reduce(function(acc, value) {
+                 acc.push(getSpanAtRef(value));
+                 return acc;
+            }, []);
+        },
         // Returns the position (in inches) of the top left corner of the body.
         topLeftPos() {
             let row = this.atRow();
@@ -1113,23 +1186,30 @@ var Stripboard = (function() {
                 y: row.pos.y
             };
         },
+        pinRef: function(pin) {
+            return offsetRef(this.at, 
+                             pin % this.pinsPerSide,
+                             pin < this.pinsPerSide ? 0 : this.spec.width);
+        },
         // Returns the position (in inches) of the center of pin N, where pin
         // 0 is the "AT" pin and the pins are numbererd down the left side
         // then down the right side.
         pinPos: function(pin) {
-            let atPos = this.atPos();
-            return {
-                x: (pin < this.pinsPerSide ? atPos.x : this.width + atPos.x),
-                y: atPos.y + ((pin % this.pinsPerSide) * kStripSize)
-            };
-        }
+            // let atPos = this.atPos();
+            // return {
+            //     x: (pin < this.pinsPerSide ? atPos.x : this.width + atPos.x),
+            //     y: atPos.y + ((pin % this.pinsPerSide) * kStripSize)
+            // };
+            return HOLE(this.pinRef(pin));
+        },
+        ...ComponentPrototype
     };
 
     function createIC(spec) {
         let atRef = parseRef(spec.at);
         return extend(Object.create(ICPrototype), {
             at: atRef,
-            pins: spec.pins,
+            pinCount: spec.pins,
             pinsPerSide: spec.pins / 2,
             width: spec.width * kStripSize,
             height: (spec.pins / 2) * kStripSize,
@@ -1144,12 +1224,15 @@ var Stripboard = (function() {
 
     const kTransistorRadius = 0.13;
     let TransistorPrototype = {
-        layer: function() {
-            return this.spec.layer == "back" ? "back" : "front";
-        },
         // Returns the position (in inches) of the center of the "at" pin
         atPos: function() {
             return getPoint(this.at);
+        },
+        getSpans: function() {
+            return this.pins.reduce(function(acc, value) {
+                 acc.push(getSpanAtRef(value));
+                 return acc;
+            }, []);
         },
         makeSvg: function() {
             let group = svgGroup("transistor"),
@@ -1181,7 +1264,8 @@ var Stripboard = (function() {
             }
             group.appendChild(transform(svgPath(commands), rotateTransform));
             return group;
-        }
+        },
+        ...ComponentPrototype
     };
 
     function createTransistor(spec) {
@@ -1236,7 +1320,7 @@ var Stripboard = (function() {
             }
             return group;
         },
-        ...ComponentPrototype
+        ...PointToPointComponentPrototype
     };
 
 
@@ -1264,7 +1348,7 @@ var Stripboard = (function() {
             }
             return group;
         },
-        ...ComponentPrototype
+        ...PointToPointComponentPrototype
     };
 
 
@@ -1427,6 +1511,7 @@ var Stripboard = (function() {
                 let component = createComponent(componentSpec);
                 if (component !== undefined) {
                     components.push(component);
+                    component.addToSpans();
                 }
             }
         }

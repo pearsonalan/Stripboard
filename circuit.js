@@ -3,7 +3,7 @@ var CIRCUIT = {
         width: 4.0,
         height: 2.6
     },
-    cuts: [ "A10", "E18" ],
+    cuts: [ "A10", "E18", "H22", "I22", "J22", "K22" ],
     wires: [
         { from: "A2", to: "C2" },
         { from: "A12", to: "B12" },
@@ -44,8 +44,8 @@ var CIRCUIT = {
         },
         {
             type: "header",
-            from: "A35",
-            to: "D35"
+            from: "T35",
+            to: "W35"
         },
         {
             label: "LED",
@@ -62,7 +62,12 @@ var CIRCUIT = {
         {
             type: "transistor",
             at: "J32",
-            orientation: "W"
+             orientation: "W"
+        },
+        {
+            type: "transistor",
+            at: "X17",
+             orientation: "E"
         }
 
     ]
