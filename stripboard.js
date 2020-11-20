@@ -1034,6 +1034,8 @@ var Stripboard = (function() {
         case "transistor":
             // Transistors are also different
             return createTransistor(spec);
+        case "hole":
+            return createHole(spec);
         default:
             console.log("Undefined component type ", spec.type, " in ", spec);
             return undefined;
@@ -1381,6 +1383,34 @@ var Stripboard = (function() {
 
 
     /******************
+    * Hole - a drilled hole in the board
+    */
+    let HolePrototype = {
+        makeSvg: function() {
+            let group = svgGroup("hole");
+            group.appendChild(svgCircle(this.pos.x, this.pos.y, this.radius));
+            return group;
+        }
+    };
+
+    function createHole(spec) {
+        let pos = undefined;
+        if (spec.ref !== undefined) {
+            pos = HOLE(spec.ref);
+        }
+        if (spec.x !== undefined && spec.y !== undefined) {
+            pos = {
+                x: spec.x,
+                y: spec.y
+            };
+        }
+        return extend(Object.create(HolePrototype), {
+            pos: pos,
+            radius: spec.radius
+        });
+    }
+
+    /******************
     * Background
     */
 
@@ -1416,7 +1446,7 @@ var Stripboard = (function() {
         group.appendChild(front);
         group.appendChild(back);
         for (const component of components) {
-            if (component.layer() == "back") {
+            if (component.layer !== undefined && component.layer() == "back") {
                 back.appendChild(component.makeSvg());
             } else {
                 front.appendChild(component.makeSvg());
@@ -1573,7 +1603,9 @@ var Stripboard = (function() {
                 let component = createComponent(componentSpec);
                 if (component !== undefined) {
                     components.push(component);
-                    component.addToSpans();
+                    if (component.addToSpans !== undefined) {
+                        component.addToSpans();
+                    }
                 }
             }
         }

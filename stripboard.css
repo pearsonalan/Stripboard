@@ -280,3 +280,13 @@ svg.stripboard g.components g.resistor > path.resistor-body {
     stroke-width: 12.0;
     stroke-linecap: round;
 }
+
+
+/**********************************************
+* Holes
+*/
+
+svg.stripboard g.components g.hole > circle {
+    fill: black;
+    stroke: none;
+}

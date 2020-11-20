@@ -3,14 +3,35 @@ var CIRCUIT = {
         width: 4.0,
         height: 2.6
     },
-    cuts: [ "A10", "E18", "H22", "I22", "J22", "K22" ],
+    cuts: [ "A10", "E18", "H22", "I22", "J22", "K22",
+            "B1", "Y1", "B38", "Y38" ],
     wires: [
-        { from: "A2", to: "C2" },
+        { from: "A7", to: "C7" },
         { from: "A12", to: "B12" },
         { from: "O20", to: "T22" },
         { from: "O25", to: "P32", layer: "back" }
     ],
     components: [
+        {
+            type: "hole",
+            ref: "B1",
+            radius: 0.06
+        },
+        {
+            type: "hole",
+            ref: "Y1",
+            radius: 0.06
+        },
+        {
+            type: "hole",
+            ref: "B38",
+            radius: 0.06
+        },
+        {
+            type: "hole",
+            ref: "Y38",
+            radius: 0.06
+        },
         {
             label: "R1",
             type: "resistor",
