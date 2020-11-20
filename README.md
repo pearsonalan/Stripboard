@@ -6,7 +6,7 @@ Stripboard.js is a stripboard / breadboard renderer that reads a circuit layout 
 specified in JSON and renders it in SVG.
 
 This can be used to lay out components, wires and cuts on a prototyping breadbord such as
-the [Busboard ST1 Stripboard](https://www.amazon.com/Two-Pack-StripBoard-Uncut-Strips-3-15in/dp/B00PBGFD5A)
+the [Busboard ST2 Stripboard](https://www.amazon.com/Busboard-ST2-Traditional-Stripboard-Prototyping/dp/B00LLQFRAU)
 shown below.
 
 <img src="images/stripboard.jpg" width="480"> 
