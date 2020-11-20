@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nets test</title>
+    <script src="../stripboard.js" lang="javascript"></script>
+    <link href="../reset.css" rel="stylesheet">
+    <link href="../stripboard.css" rel="stylesheet">
+</head>
+<body>
+<script lang="javascript">
+var CIRCUIT = {
+    layout: "sb4half",
+    cuts: ['A3', 'H0', 'F23', 'B6', 'C5', 'D5', 'D6',
+           'E1', 'F1', 'F2', 'D11', 'G11'],
+    wires: [
+        { from: "A7", to: "B7"},
+        { from: "D0", to: "D1"},
+        { from: "D1", to: "C1"},
+        { from: "C8", to: "E8"},
+        { from: "F5", to: "G5"},
+        { from: "F6", to: "G6"},
+        { from: "J5", to: "K5"},
+        { from: "K5", to: "L5"},
+        { from: "L5", to: "M5"},
+        { from: "M6", to: "M7"},
+        { from: "J6", to: "J7"},
+        { from: "J10", to: "M10"},
+        { from: "B10", to: "D10"},
+        { from: "E11", to: "E13"},
+        { from: "F10", to: "F11"},
+        { from: "I22", to: "I23"},
+        { from: "K14", to: "K15"}
+    ],
+    nets: {
+        "A0": "VCC"
+    },
+    components: [
+        {
+            label: "R1",
+            type: "resistor",
+            from: "E14",
+            to: "K14",
+        },
+        {
+            type: "header",
+            from: "F21",
+            to: "I21",
+        },
+    ]
+};
+
+window.addEventListener("DOMContentLoaded", function() {
+    Stripboard.init($ID("stripboard"), CIRCUIT);
+});
+</script>
+    <h1>Nets Test</h1>
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+        id="stripboard" class="stripboard" width="440" height="380"></svg>
+</body>
+</html>
