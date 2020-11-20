@@ -52,16 +52,20 @@ var Stripboard = (function() {
         return d * kPixelsPerInch;
     }
 
-    function svgElement(e) {
-        return document.createElementNS("http://www.w3.org/2000/svg", e);
+    function toInches(p) {
+        return p / kPixelsPerInch;
+    }
+
+    function svgElement(e, classname) {
+        let elt = document.createElementNS("http://www.w3.org/2000/svg", e);
+        if (classname !== undefined) {
+            elt.setAttribute("class", classname);
+        }
+        return elt;
     }
 
     function svgGroup(classname) {
-        let group = svgElement("g");
-        if (classname !== undefined) {
-            group.setAttribute("class", classname);
-        }
-        return group;
+        return svgElement("g", classname);
     }
 
     // Make an SVG Path command to move to the absolute position (x1, y1)
@@ -76,6 +80,14 @@ var Stripboard = (function() {
         return "L " + toPixels(x1) + " " + toPixels(y1) + "\n";
     }
 
+    // Units: inches
+    function arcAbs(rx, ry, rotationAngle, largeArcFlag, sweepFlag, x, y) {
+        return "A " + toPixels(rx) + " " + toPixels(ry) + " "
+                    + rotationAngle + " "
+                    + (largeArcFlag ? "1" : "0") + " "
+                    + (sweepFlag ? "1" : "0")  + " "
+                    + toPixels(x) + " " + toPixels(y) + "\n";
+    }
     // Make an SVG Path command to draw a cubic Bezier curve to the absolute position (x, y)
     // with control points C1=(cx1, cy1) and C2=(cx2, cy2)
     // Units: inches
@@ -86,29 +98,25 @@ var Stripboard = (function() {
             + toPixels(x) + " " + toPixels(y) + "\n";
     }
 
+    function svgPath(commands, classname) {
+        let path = svgElement("path", classname);
+        path.setAttribute("d", commands);
+        return path;
+    }
+
     // Create an SVG Path element drawing a straight line from (x1, y1) to (x2, y2)
     // Units: inches
     function svgLine(x1, y1, x2, y2, classname) {
-        let path = svgElement("path");
         let commands = moveAbs(x1, y1) + lineAbs(x2, y2);
-        path.setAttribute("d", commands);
-        if (classname !== undefined) {
-            path.setAttribute("class", classname);
-        }
-        return path;
+        return svgPath(commands, classname);
     }
 
     // Create an SVG Path element drawing a cubic Bezier curve from (x1, y1) to (x2, y2)
     // with control points C1=(cx1, cy1) and C2=(cx2, cy2)
     // Units: inches
     function svgSpline(x1, y1, x2, y2, cx1, cy1, cx2, cy2, classname) {
-        let path = svgElement("path");
         let commands = moveAbs(x1, y1) + cubicSplineAbs(x2, y2, cx1, cy1, cx2, cy2);
-        path.setAttribute("d", commands);
-        if (classname !== undefined) {
-            path.setAttribute("class", classname);
-        }
-        return path;
+        return svgPath(commands, classname);
     }
 
     // Units: Inches
@@ -118,26 +126,20 @@ var Stripboard = (function() {
 
     // Units: Pixels
     function svgRectPx(x, y, width, height, classname) {
-        let rect = svgElement("rect");
+        let rect = svgElement("rect", classname);
         rect.setAttribute("x", x);
         rect.setAttribute("y", y);
         rect.setAttribute("width", width);
         rect.setAttribute("height", height);
-        if (classname !== undefined) {
-            rect.setAttribute("class", classname);
-        }
         return rect;
     }
 
     // Units: inches
     function svgCircle(x, y, radius, classname) {
-        let circle = svgElement("circle");
+        let circle = svgElement("circle", classname);
         circle.setAttribute("cx", toPixels(x));
         circle.setAttribute("cy", toPixels(y));
         circle.setAttribute("r", toPixels(radius));
-        if (classname !== undefined) {
-            circle.setAttribute("class", classname);
-        }
         return circle;
     }
 
@@ -148,13 +150,10 @@ var Stripboard = (function() {
 
     // Units: Pixels
     function svgTextPx(x, y, content, classname) {
-        let text = svgElement("text");
+        let text = svgElement("text", classname);
         text.setAttribute("x", x);
         text.setAttribute("y", y);
         text.textContent = content;
-        if (classname !== undefined) {
-            text.setAttribute("class", classname);
-        }
         return text;
     }
 
@@ -206,6 +205,7 @@ var Stripboard = (function() {
         return group;
     }
 
+    // This constant defines the spacing between holes.
     const kStripSize = 0.1;
     const kStripWidth = 0.07, kStripPadding = (kStripSize - kStripWidth) / 2.0;
     const kHoleRadius = 0.02;
@@ -214,19 +214,40 @@ var Stripboard = (function() {
 
     // TODO: Move all of these into a "Board" object so we can have more than one
     // board on a page.
+
+    // The width of the board in inches
     let boardWidth = 0;
+
+    // The height of the board in inches
     let boardHeight = 0;
-    let rows = {};
-    let strips = [];
-    let refToStrip = {};
-    let spans = [];
-    let refToSpan = {};
-    let wires = [];
-    let legend = null;
-    let board = null;
-    let components = [];
+
+    // the number of rows on the board vertically. This is the height divided by the
+    // strip size.
     let rowCount = 0;
     let holeCount = 0;
+
+    // A mapping from row name (e.g. "A" or "AC") to a row object
+    let rows = {};
+
+    // An array of all the strips on the board
+    let strips = [];
+
+    // An array of all the spans on the board
+    let spans = [];
+    let wires = [];
+    let components = [];
+
+    // A mapping from text ref (e.g. "A0") to the strip that contains that ref
+    let refToStrip = {};
+
+    // A mapping from text ref (e.g. "A0") to the span that contains that ref
+    let refToSpan = {};
+
+    // A mapping from text ref (e.g. "A0") to the net that contains that ref
+    let refToNet = {};
+
+    let legend = null;
+    let board = null;
 
     /******************
     * Refs
@@ -287,6 +308,25 @@ var Stripboard = (function() {
         newref.hole += cols;
         newref.row = makeRowName(newref.r);
         return newref;
+    }
+
+
+    // Given a position with {x,y} in inches, return the ref at that position
+    // or undefined
+    function refAtPos(pos) {
+        if (pos.x === undefined || pos.y === undefined ||
+            pos.x < 0 || pos.x > boardWidth ||
+            pos.y < 0 || pos.y > boardHeight) {
+            return undefined;
+        }
+        let hole = Math.floor(pos.x / kStripSize),
+            r = Math.floor(pos.y / kStripSize),
+            row = makeRowName(r);
+        return {
+            row: row,
+            r: r,
+            hole: hole
+        };
     }
 
     /******************
@@ -382,9 +422,6 @@ var Stripboard = (function() {
     *           include "cuts" which separate the strip into "spans" which are
     *           conntected and at the same voltage.
     */
-
-    const kHorizontalOrientation = "horz";
-    const kVerticalOrientation = "vert";
 
     // Hander for hover over an element
     function onHover(text, el, event) {
@@ -489,7 +526,6 @@ var Stripboard = (function() {
     function createHorizontalStrip(startRef, holes) {
         let endRef = offsetRef(startRef, 0, holes - 1);
         let strip = extend(Object.create(HorizontalStripPrototype), {
-            orientation: kHorizontalOrientation,
             name: `${TREF(startRef)}:${TREF(endRef)}`,
             startRef: REF(startRef),
             endRef: endRef,
@@ -560,7 +596,6 @@ var Stripboard = (function() {
     function createVerticalStrip(startRef, holes) {
         let endRef = offsetRef(startRef, holes - 1, 0);
         let strip = extend(Object.create(VerticalStripPrototype), {
-            orientation: kHorizontalOrientation,
             name: `${TREF(startRef)}:${TREF(endRef)}`,
             startRef: REF(startRef),
             endRef: endRef,
@@ -579,18 +614,8 @@ var Stripboard = (function() {
     }
 
     function getStripAtRef(ref) {
-        if (typeof ref != "string") {
-            ref = ref.row + ref.hole;
-        }
-        return refToStrip[ref];
-    }
-
-    // Iterates the strips after cuts have been assigned and builds spans
-    // from the un-cut sections
-    function makeSpans() {
-        for (const strip of strips) {
-            strip.makeSpans();
-        }
+        let tref = TREF(ref);
+        return refToStrip[tref];
     }
 
     // Stripboard strips are horizontal strips, one per row
@@ -679,11 +704,28 @@ var Stripboard = (function() {
     }
 
 
-    /******************
-    * Spans
+    /**************************************************************************
+    * Spans - A span is a section of strip that is connected. The whole strip
+    *         may be a single span if there are no cuts.  If there are cuts
+    *         on the strip, it may be separated into two or more spans.
+    *         If a span has wires or components connected to it, it will be
+    *         part of a net. A span with no connections is not part of the
+    *         circuit so is not assigned to a net.
     */
 
     let SpanPrototype = {
+        // Return the next ref in the span.
+        nextRef: function(ref) {
+            let pref = REF(ref);
+            if (pref.r == this.endRef.r && pref.hole == this.endRef.hole) {
+                // At the end of the span
+                return undefined;
+            }
+            return this.strip.nextRef(ref);
+        },
+        addWire: function(wire) {
+            this.wires.push(wire);
+        },
         makeSvg: function() {
             let from = HOLE(this.startRef),
                 to = HOLE(this.endRef);
@@ -692,12 +734,32 @@ var Stripboard = (function() {
     };
 
     function makeSpan(strip, startRef, endRef) {
-        return extend(Object.create(SpanPrototype), {
+        let span = extend(Object.create(SpanPrototype), {
             name: `${TREF(startRef)}:${TREF(endRef)}`,
             strip: strip,
-            startRef: startRef,
-            endRef: endRef
+            startRef: REF(startRef),
+            endRef: REF(endRef),
+            wires: [],
+            components: [],
+            net: undefined
         });
+
+        // Update the ref -> span map for all the refs in the span
+        for (let ref = span.startRef; ref !== undefined; ref = span.nextRef(ref)) {
+            let tref = TREF(ref);
+            // console.log(`setting span at ${tref} to ${span.name}`);
+            refToSpan[tref] = span;
+        }
+
+        return span;
+    }
+
+    // Iterates the strips after cuts have been assigned and builds spans
+    // from the un-cut sections
+    function makeSpans() {
+        for (const strip of strips) {
+            strip.makeSpans();
+        }
     }
 
     function spansSvg() {
@@ -708,6 +770,79 @@ var Stripboard = (function() {
         return group;
     }
 
+    function getSpanAtRef(ref) {
+        let tref = TREF(ref);
+        return refToSpan[tref];
+    }
+
+
+    /**************************************************************************
+    * Nets  - A net is a single span or a group of spans which are connected
+    *         together by wires. A net is essentially a "node" in a circuit
+    *         with all of the spans at the same voltage.
+    */
+
+    let NetPrototype = {
+        addSpan: function(span) {
+            this.spans.push(span);
+        }
+    };
+
+    // Creates a net
+    function makeNet(name) {
+        return extend(Object.create(NetPrototype), {
+            name: name,
+            spans: [],
+        });
+    }
+
+    // Iterates the spans after strips have been split into spans to create nets
+    function makeNets() {
+        let n = 0;
+        let visited = new Map();
+        for (const span of spans) {
+            // If the span has any wires or components connected to it and the span is
+            // not already in a net, make a net
+            if ((span.wires.length > 0 || span.components.length > 0) && span.net === undefined) {
+                let net = makeNet(`N${n}`);
+                let searchSpans = [],
+                    s = undefined;
+
+                // Add the starting span to the searchSpans array
+                searchSpans.push(span);
+                while ((s = searchSpans.shift()) !== undefined) {
+                    if (visited.get(s)) continue;
+                    visited.set(s, true);
+                    net.addSpan(s);
+                    s.net = net;
+                    // Add any spans connected by wires to s to the searchSpans array if they have
+                    // not been visited.
+                    for (const wire of s.wires) {
+                        if (!visited.get(wire.fromSpan())) searchSpans.push(wire.fromSpan());
+                        if (!visited.get(wire.toSpan())) searchSpans.push(wire.toSpan());
+                    }
+                }
+                n++;
+            }
+        }
+        console.log(`Created ${n} nets.`);
+
+        // Update the ref -> net map for all the refs in spans that have nets
+        for (const span of spans) {
+            if (span.net !== undefined) {
+                for (let ref = span.startRef; ref !== undefined; ref = span.nextRef(ref)) {
+                    let tref = TREF(ref);
+                    refToNet[tref] = span.net;
+                }
+            }
+        }
+
+    }
+
+    function getNetAtRef(ref) {
+        let tref = TREF(ref);
+        return refToNet[tref];
+    }
 
     /******************
     * Wires
@@ -732,15 +867,21 @@ var Stripboard = (function() {
             group.appendChild(wire);
             return group;
         },
-        // fromStrip: function() {
-        //     return getStrip(this.fromRef);
-        // },
+        fromStrip: function() {
+            return getStripAtRef(this.fromRef);
+        },
+        fromSpan: function() {
+            return getSpanAtRef(this.fromRef);
+        },
         fromPoint: function() {
             return getPoint(this.fromRef);
         },
-        // toStrip: function() {
-        //     return getStrip(this.toRef);
-        // },
+        toStrip: function() {
+            return getStripAtRef(this.toRef);
+        },
+        toSpan: function() {
+            return getSpanAtRef(this.toRef);
+        },
         toPoint: function() {
             return getPoint(this.toRef);
         },
@@ -749,11 +890,17 @@ var Stripboard = (function() {
     function createWire(spec) {
         let fromRef = parseRef(spec.from);
         let toRef = parseRef(spec.to);
-        return extend(Object.create(WirePrototype), {
+        let wire = extend(Object.create(WirePrototype), {
             fromRef: fromRef,
             toRef: toRef,
             spec: spec
         });
+
+        // Add the wire to the spans it is connected to
+        wire.fromSpan().addWire(wire);
+        wire.toSpan().addWire(wire);
+
+        return wire;
     }
 
 
@@ -791,15 +938,21 @@ var Stripboard = (function() {
         layer: function() {
             return (this.spec.layer == "back") ? "back" : "front";
         },
-        // fromStrip: function() {
-        //     return getStrip(this.fromRef);
-        // },
+        fromStrip: function() {
+            return getStripAtRef(this.fromRef);
+        },
+        fromSpan: function() {
+            return getSpanAtRef(this.fromRef);
+        },
         fromPoint: function() {
             return getPoint(this.fromRef);
         },
-        // toStrip: function() {
-        //     return getStrip(this.toRef);
-        // },
+        toStrip: function() {
+            return getStripAtRef(this.toRef);
+        },
+        toSpan: function() {
+            return getSpanAtRef(this.toRef);
+        },
         toPoint: function() {
             return getPoint(this.toRef);
         },
@@ -830,6 +983,9 @@ var Stripboard = (function() {
         case "ic":
             // IC's are different in that they don't have a from -> to shape
             return createIC(spec);
+        case "transistor":
+            // Transistors are also different
+            return createTransistor(spec);
         default:
             console.log("Undefined component type ", spec.type, " in ", spec);
             return undefined;
@@ -983,6 +1139,79 @@ var Stripboard = (function() {
 
 
     /******************
+    * Transistors
+    */
+
+    const kTransistorRadius = 0.13;
+    let TransistorPrototype = {
+        layer: function() {
+            return this.spec.layer == "back" ? "back" : "front";
+        },
+        // Returns the position (in inches) of the center of the "at" pin
+        atPos: function() {
+            return getPoint(this.at);
+        },
+        makeSvg: function() {
+            let group = svgGroup("transistor"),
+                pinsGroup = svgGroup("pins"),
+                at = this.atPos();
+            for (const pin of this.pins) {
+                let pinPos = HOLE(pin);
+                pinsGroup.appendChild(svgCircle(pinPos.x, pinPos.y, kFilledHoleRadius));
+            }
+            group.appendChild(pinsGroup);
+            let commands = moveAbs(at.x - 0.1, at.y - 0.1) +
+                           lineAbs(at.x + 0.1, at.y - 0.1) +
+                           arcAbs(kTransistorRadius, kTransistorRadius, 0,
+                                true, true, at.x - 0.1, at.y - 0.1);
+            var rotateTransform;
+            switch (this.orientation) {
+            case "N":
+                rotateTransform = `rotate(0,${toPixels(at.x)},${toPixels(at.y)})`;
+                break;
+            case "S":
+                rotateTransform = `rotate(180,${toPixels(at.x)},${toPixels(at.y)})`;
+                break;
+            case "E":
+                rotateTransform = `rotate(90,${toPixels(at.x)},${toPixels(at.y)})`;
+                break;
+            case "W":
+                rotateTransform = `rotate(270,${toPixels(at.x)},${toPixels(at.y)})`;
+                break;
+            }
+            group.appendChild(transform(svgPath(commands), rotateTransform));
+            return group;
+        }
+    };
+
+    function createTransistor(spec) {
+        let atRef = parseRef(spec.at),
+            orientation = spec.orientation || "N";
+        var pins;
+        switch (orientation) {
+        case "N":
+            pins = [offsetRef(atRef, 0, -1), atRef, offsetRef(atRef, 0, 1)];
+            break;
+        case "S":
+            pins = [offsetRef(atRef, 0, 1), atRef, offsetRef(atRef, 0, -1)];
+            break;
+        case "E":
+            pins = [offsetRef(atRef, -1, 0), atRef, offsetRef(atRef, 1, 0)];
+            break;
+        case "W":
+            pins = [offsetRef(atRef, 1, 0), atRef, offsetRef(atRef, -1, 0)];
+            break;
+        }
+        return extend(Object.create(TransistorPrototype), {
+            at: atRef,
+            orientation: orientation,
+            pins: pins,
+            spec: spec
+        });
+    }
+
+
+    /******************
     * LEDs
     */
 
@@ -1109,21 +1338,29 @@ var Stripboard = (function() {
         makeSvg: function() {
             let group = svgGroup("legend"),
                 background = svgRectPx(0, 0, this.width, this.height, "background");
-            group.appendChild(background);
-            this.textSvgEl = svgTextPx(4, this.height - 4, "", "hover");
-            group.appendChild(this.textSvgEl);
+            this.hoverTextElt = svgTextPx(4, this.height - 4, "", "hover");
+            this.posTextElt = svgTextPx(124, this.height - 4, "", "pos");
+            this.netTextElt = svgTextPx(258, this.height - 4, "", "net");
             let viewControl = svgTextPx(this.width - 60, this.height - 4, view, "view");
+            group.appendChild(background);
+            group.appendChild(this.hoverTextElt);
+            group.appendChild(this.posTextElt);
+            group.appendChild(this.netTextElt);
             group.appendChild(viewControl);
             viewControl.addEventListener("click", function (event) {
                 swapView();
-                console.log("Click view control, this = ", this);
-                console.log("Event = ", event);
                 event.target.textContent = view;
             }.bind(this));
             return translatePx(group, this.x, this.y);
         },
         setHoverContent: function(content) {
-            this.textSvgEl.textContent = content;
+            this.hoverTextElt.textContent = content;
+        },
+        setPositionContent: function(content) {
+            this.posTextElt.textContent = content;
+        },
+        setNetContent: function(content) {
+            this.netTextElt.textContent = content;
         }
     };
 
@@ -1133,7 +1370,9 @@ var Stripboard = (function() {
             x: x,
             y: y,
             width: width,
-            textSvgEl: null,
+            hoverTextElt: null,
+            posTextElt: null,
+            netTextElt: null,
             height: kLegendHeight
         });
     }
@@ -1181,11 +1420,24 @@ var Stripboard = (function() {
             }
         }
 
-        if (circuit.components != undefined) {
+        if (circuit.components !== undefined) {
             for (const componentSpec of circuit.components) {
                 let component = createComponent(componentSpec);
                 if (component !== undefined) {
                     components.push(component);
+                }
+            }
+        }
+
+        // Once wires and components have been added, we can create nets
+        makeNets();
+
+        // Use the nets map in the circuit to give names to some nets.
+        if (circuit.nets !== undefined) {
+            for (const [ref, netname] of Object.entries(circuit.nets)) {
+                let net = getNetAtRef(ref);
+                if (net !== undefined) {
+                    net.name = netname;
                 }
             }
         }
@@ -1200,6 +1452,35 @@ var Stripboard = (function() {
         view.appendChild(board);
         root.appendChild(view);
         root.appendChild(legend.makeSvg());
+
+        board.addEventListener("mousemove", function (event) {
+            let rect = this.getBoundingClientRect(),
+                x = event.clientX - rect.left,
+                y = event.clientY - rect.top;
+            let pos = {
+                x: toInches(x),
+                y: toInches(y)
+            }
+            let posText = `[${pos.x.toFixed(2)},${pos.y.toFixed(2)}]`;
+            let ref = refAtPos(pos);
+            let net = undefined;
+            if (ref !== undefined) {
+                let tref = TREF(ref);
+                posText = posText + " " + tref;
+                net = getNetAtRef(tref);
+            }
+            legend.setPositionContent(posText);
+            if (net === undefined) {
+                legend.setNetContent("");
+            } else {
+                legend.setNetContent(`NET: ${net.name}`);
+            }
+        }.bind(board));
+
+        view.addEventListener("mouseleave", function (event) {
+            legend.setPositionContent("");
+            legend.setNetContent("");
+        });
     }
 
     // Initialize all SVG elements with class "stribpoard" to show the
@@ -1217,6 +1498,8 @@ var Stripboard = (function() {
 
         // returned for testing
         getSpans: function() { return spans; },
+        getComponents: function() { return components; },
+        getSpanAtRef: getSpanAtRef,
         getStripAtRef: getStripAtRef,
         POS: POS,
         HOLE: HOLE,

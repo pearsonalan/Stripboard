@@ -210,6 +210,22 @@ svg.stripboard g.components g.led > circle.led-body {
 
 
 /**********************************************
+* Transistors
+*/
+
+svg.stripboard g.components g.transistor > circle ,
+svg.stripboard g.components g.transistor > path {
+    fill: #555555;
+    opacity: 0.9;
+}
+
+svg.stripboard g.components g.transistor g.pins > circle {
+    fill: green;
+    stroke: green;
+    stroke-width: 2;
+}
+
+/**********************************************
 * Header
 */
 
