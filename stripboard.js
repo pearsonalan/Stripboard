@@ -1351,7 +1351,9 @@ var Stripboard = (function() {
                 swapView();
                 event.target.textContent = view;
             }.bind(this));
-            return translatePx(group, this.x, this.y);
+            let legendContainer = svgGroup("legend-container");
+            legendContainer.appendChild(group);
+            return translatePx(legendContainer, this.x, this.y);
         },
         setHoverContent: function(content) {
             this.hoverTextElt.textContent = content;

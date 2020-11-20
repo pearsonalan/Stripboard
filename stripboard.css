@@ -59,6 +59,12 @@ svg.stripboard g.rulers path {
 
 svg.stripboard g.legend {
     cursor: default;
+    transform: translate(0, 20px);
+    transition: transform 0.2s;
+}
+
+svg.stripboard:hover g.legend {
+    transform: translate(0, 0);
 }
 
 svg.stripboard g.legend > rect.background {
