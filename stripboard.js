@@ -198,10 +198,10 @@ var Stripboard = (function() {
         return group;
     }
 
-    function makeRulers() {
+    function makeRulers(width, height) {
         let group = svgGroup("rulers");
-        group.appendChild(makeHorizontalRuler(boardWidth));
-        group.appendChild(makeVerticalRuler(boardHeight));
+        group.appendChild(makeHorizontalRuler(width));
+        group.appendChild(makeVerticalRuler(height));
         return group;
     }
 
@@ -1520,9 +1520,11 @@ var Stripboard = (function() {
         });
     }
 
+
     /******************
      * Board
      */
+    
     let BoardPrototype = {
         init: function() {
 
@@ -1540,7 +1542,7 @@ var Stripboard = (function() {
         return board;
     }
 
-
+    // When called, this is bound to board object
     function onMouseMove(event) {
         let rect = this.svgElement.getBoundingClientRect(),
             x = event.clientX - rect.left,
@@ -1649,7 +1651,7 @@ var Stripboard = (function() {
             }
         }
 
-        root.appendChild(makeRulers());
+        root.appendChild(makeRulers(boardWidth, boardHeight));
 
         legend = makeLegend(board, 0, root.clientHeight - kLegendHeight, root.clientWidth);
 
