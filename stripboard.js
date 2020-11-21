@@ -1413,9 +1413,9 @@ var Stripboard = (function() {
     * Background
     */
 
-    function makeBackground() {
+    function makeBackground(board) {
         let backgroundGroup = svgGroup(),
-            rect = svgRect(-kBoardPadding, -kBoardPadding, boardWidth + 2 * kBoardPadding, boardHeight + 2 * kBoardPadding);
+            rect = svgRect(-kBoardPadding, -kBoardPadding, board.width + 2 * kBoardPadding, board.height + 2 * kBoardPadding);
         backgroundGroup.setAttribute("class", "background");
         backgroundGroup.appendChild(rect);
         backgroundGroup.appendChild(stripsSvg());
@@ -1454,21 +1454,6 @@ var Stripboard = (function() {
         return group;
     }
 
-    function swapView(board) {
-        if (board.viewOrientation == "FRONT") {
-            board.viewOrientation = "BACK";
-            board.svgElement.setAttribute("transform", `matrix(-1 0 0 1 ${toPixels(boardWidth)} 0)`);
-            board.svgElement.classList.remove("front-view");
-            board.svgElement.classList.add("back-view");
-        } else {
-            board.viewOrientation = "FRONT";
-            board.svgElement.setAttribute("transform", "");
-            board.svgElement.classList.add("front-view");
-            board.svgElement.classList.remove("back-view");
-        }
-    }
-
-
     /******************
     * Legend
     */
@@ -1488,7 +1473,7 @@ var Stripboard = (function() {
             group.appendChild(this.netTextElt);
             group.appendChild(viewControl);
             viewControl.addEventListener("click", function (event) {
-                swapView(this.board);
+                this.board.swapView();
                 event.target.textContent = this.board.viewOrientation;
             }.bind(this));
             let legendContainer = svgGroup("legend-container");
@@ -1528,15 +1513,39 @@ var Stripboard = (function() {
     let BoardPrototype = {
         init: function() {
 
+        },
+        swapView: function() {
+            if (this.viewOrientation == "FRONT") {
+                this.viewOrientation = "BACK";
+                this.svgElement.setAttribute("transform", `matrix(-1 0 0 1 ${toPixels(this.width)} 0)`);
+                this.svgElement.classList.remove("front-view");
+                this.svgElement.classList.add("back-view");
+            } else {
+                this.viewOrientation = "FRONT";
+                this.svgElement.setAttribute("transform", "");
+                this.svgElement.classList.add("front-view");
+                this.svgElement.classList.remove("back-view");
+            }
+        },
+        makeLegend: function() {
+            this.legend = makeLegend(this, 0, this.root.clientHeight - kLegendHeight, this.root.clientWidth);
+            return this.legend;
         }
     };
 
     function makeBoard(root, circuit) {
+        let height = circuit.dimensions.height;
+        let width = circuit.dimensions.width;
         let board = extend(Object.create(BoardPrototype), {
             root: root,
             circuit: circuit,
+            height: height,
+            width: width,
+            rowCount: Math.floor(height / kStripSize + kStripSize / 2),
+            holeCount: Math.floor(width / kStripSize + kStripSize / 2),
             viewOrientation: "FRONT",
-            svgElement: null
+            svgElement: null,
+            legend: null
         });
         board.init();
         return board;
@@ -1563,11 +1572,11 @@ var Stripboard = (function() {
             posText = posText + " " + tref;
             net = getNetAtRef(tref);
         }
-        legend.setPositionContent(posText);
+        this.legend.setPositionContent(posText);
         if (net === undefined) {
-            legend.setNetContent("");
+            this.legend.setNetContent("");
         } else {
-            legend.setNetContent(`NET: ${net.name}`);
+            this.legend.setNetContent(`NET: ${net.name}`);
         }
     }
 
@@ -1651,26 +1660,28 @@ var Stripboard = (function() {
             }
         }
 
-        root.appendChild(makeRulers(boardWidth, boardHeight));
+        root.appendChild(makeRulers(board.width, board.height));
 
-        legend = makeLegend(board, 0, root.clientHeight - kLegendHeight, root.clientWidth);
+        legend = board.makeLegend();
 
         board.svgElement = svgGroup("board front-view");
-        board.svgElement.appendChild(makeBackground());
+        board.svgElement.appendChild(makeBackground(board));
         board.svgElement.appendChild(spansSvg());
         board.svgElement.appendChild(wiresSvg());
         board.svgElement.appendChild(componentsSvg());
         let view = svgGroup("view");
         view.appendChild(board.svgElement);
         root.appendChild(view);
-        root.appendChild(legend.makeSvg());
+        root.appendChild(board.legend.makeSvg());
 
         board.svgElement.addEventListener("mousemove", onMouseMove.bind(board));
 
         view.addEventListener("mouseleave", function (event) {
-            legend.setPositionContent("");
-            legend.setNetContent("");
-        });
+            this.legend.setPositionContent("");
+            this.legend.setNetContent("");
+        }.bind(board));
+
+        return board;
     }
 
     return {
