@@ -522,9 +522,10 @@ var Stripboard = (function() {
         ...StripPrototype
     }
 
-    function createHorizontalStrip(startRef, holes) {
+    function createHorizontalStrip(board, startRef, holes) {
         let endRef = offsetRef(startRef, 0, holes - 1);
         let strip = extend(Object.create(HorizontalStripPrototype), {
+            board: board,
             name: `${TREF(startRef)}:${TREF(endRef)}`,
             startRef: REF(startRef),
             endRef: endRef,
@@ -592,9 +593,10 @@ var Stripboard = (function() {
         ...StripPrototype
     }
 
-    function createVerticalStrip(startRef, holes) {
+    function createVerticalStrip(board, startRef, holes) {
         let endRef = offsetRef(startRef, holes - 1, 0);
         let strip = extend(Object.create(VerticalStripPrototype), {
+            board: board,
             name: `${TREF(startRef)}:${TREF(endRef)}`,
             startRef: REF(startRef),
             endRef: endRef,
@@ -615,111 +617,6 @@ var Stripboard = (function() {
     function getStripAtRef(ref) {
         let tref = TREF(ref);
         return refToStrip[tref];
-    }
-
-    // Stripboard strips are horizontal strips, one per row
-    function makeStripboardStrips() {
-        let strips = [];
-        for (const [key, row] of Object.entries(rows)) {
-            strips.push(createHorizontalStrip(row.startRef(), holeCount));
-        }
-        return strips;
-    }
-
-    // Protoboard strips have vertical busses on each side with horizontal strips
-    // in the middle.
-    function makeProtoboardStrips() {
-        let strips = [];
-        strips.push(createVerticalStrip("A0", rowCount));
-        strips.push(createVerticalStrip(offsetRef("A0", 0, holeCount-1), rowCount));
-        for (const [key, row] of Object.entries(rows)) {
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 1), holeCount - 2));
-        }
-        return strips;
-    }
-
-    // Protoboard strips have 2 vertical busses on each side with horizontal strips
-    // in the middle and a gap.
-    function makeBreadboardStrips() {
-        let strips = [];
-        strips.push(createVerticalStrip("A0", rowCount));
-        strips.push(createVerticalStrip("A1", rowCount));
-        for (const [key, row] of Object.entries(rows)) {
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 2), 5));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 9), 5));
-        }
-        strips.push(createVerticalStrip("A14", rowCount));
-        strips.push(createVerticalStrip("A15", rowCount));
-        return strips;
-    }
-
-    function makeSB4Strips(fullboard) {
-        let strips = [];
-        strips.push(createVerticalStrip("A0", 19));
-        strips.push(createVerticalStrip("A11", 19));
-        strips.push(createVerticalStrip("A12", 19));
-        strips.push(createVerticalStrip("A23", 19));
-        if (fullboard) {
-            strips.push(createVerticalStrip("T0", 19));
-            strips.push(createVerticalStrip("T11", 19));
-            strips.push(createVerticalStrip("T12", 19));
-            strips.push(createVerticalStrip("T23", 19));
-        }
-        for (const [key, row] of Object.entries(rows)) {
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 1), 4));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 5), 2));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 7), 4));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 13), 2));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 15), 2));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 17), 2));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 19), 2));
-            strips.push(createHorizontalStrip(offsetRef(row.startRef(), 0, 21), 2));
-        }
-        return strips;
-    }
-
-    function makeSB4HorizStrips(fullboard) {
-        let strips = [];
-        strips.push(createHorizontalStrip("A0", 19));
-        strips.push(createHorizontalStrip("L0", 19));
-        strips.push(createHorizontalStrip("M0", 19));
-        strips.push(createHorizontalStrip("X0", 19));
-        if (fullboard) {
-            strips.push(createHorizontalStrip("A19", 19));
-            strips.push(createHorizontalStrip("L19", 19));
-            strips.push(createHorizontalStrip("M19", 19));
-            strips.push(createHorizontalStrip("X19", 19));
-        }
-        for (let c = 0; c < holeCount; c++) {
-            strips.push(createVerticalStrip("B"+c, 4));
-            strips.push(createVerticalStrip("F"+c, 2));
-            strips.push(createVerticalStrip("H"+c, 4));
-            strips.push(createVerticalStrip("N"+c, 2));
-            strips.push(createVerticalStrip("P"+c, 2));
-            strips.push(createVerticalStrip("R"+c, 2));
-            strips.push(createVerticalStrip("T"+c, 2));
-            strips.push(createVerticalStrip("V"+c, 2));
-        }
-        return strips;
-    }
-
-    function makeStrips(layout) {
-        if (layout == "protoboard") {
-            return makeProtoboardStrips();
-        }
-        if (layout == "breadboard") {
-            return makeBreadboardStrips();
-        }
-        if (layout == "sb4") {
-            return makeSB4Strips(true);
-        }
-        if (layout == "sb4-horiz") {
-            return makeSB4HorizStrips(true);
-        }
-        if (layout == "sb4half") {
-            return makeSB4Strips(false);
-        }
-        return makeStripboardStrips();
     }
 
     function stripsSvg() {
@@ -1514,6 +1411,112 @@ var Stripboard = (function() {
         init: function() {
 
         },
+
+        // Stripboard strips are horizontal strips, one per row
+        makeStripboardStrips: function() {
+            let strips = [];
+            for (const [key, row] of Object.entries(rows)) {
+                strips.push(createHorizontalStrip(this, row.startRef(), holeCount));
+            }
+            return strips;
+        },
+
+        // Protoboard strips have vertical busses on each side with horizontal strips
+        // in the middle.
+        makeProtoboardStrips: function() {
+            let strips = [];
+            strips.push(createVerticalStrip(this, "A0", rowCount));
+            strips.push(createVerticalStrip(this, offsetRef("A0", 0, holeCount-1), rowCount));
+            for (const [key, row] of Object.entries(rows)) {
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 1), holeCount - 2));
+            }
+            return strips;
+        },
+
+        // Protoboard strips have 2 vertical busses on each side with horizontal strips
+        // in the middle and a gap.
+        makeBreadboardStrips: function() {
+            let strips = [];
+            strips.push(createVerticalStrip(this, "A0", rowCount));
+            strips.push(createVerticalStrip(this, "A1", rowCount));
+            for (const [key, row] of Object.entries(rows)) {
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 2), 5));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 9), 5));
+            }
+            strips.push(createVerticalStrip(this, "A14", rowCount));
+            strips.push(createVerticalStrip(this, "A15", rowCount));
+            return strips;
+        },
+
+        makeSB4Strips: function(fullboard) {
+            let strips = [];
+            strips.push(createVerticalStrip(this, "A0", 19));
+            strips.push(createVerticalStrip(this, "A11", 19));
+            strips.push(createVerticalStrip(this, "A12", 19));
+            strips.push(createVerticalStrip(this, "A23", 19));
+            if (fullboard) {
+                strips.push(createVerticalStrip(this, "T0", 19));
+                strips.push(createVerticalStrip(this, "T11", 19));
+                strips.push(createVerticalStrip(this, "T12", 19));
+                strips.push(createVerticalStrip(this, "T23", 19));
+            }
+            for (const [key, row] of Object.entries(rows)) {
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 1), 4));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 5), 2));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 7), 4));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 13), 2));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 15), 2));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 17), 2));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 19), 2));
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 21), 2));
+            }
+            return strips;
+        },
+
+        makeSB4HorizStrips: function(fullboard) {
+            let strips = [];
+            strips.push(createHorizontalStrip(this, "A0", 19));
+            strips.push(createHorizontalStrip(this, "L0", 19));
+            strips.push(createHorizontalStrip(this, "M0", 19));
+            strips.push(createHorizontalStrip(this, "X0", 19));
+            if (fullboard) {
+                strips.push(createHorizontalStrip(this, "A19", 19));
+                strips.push(createHorizontalStrip(this, "L19", 19));
+                strips.push(createHorizontalStrip(this, "M19", 19));
+                strips.push(createHorizontalStrip(this, "X19", 19));
+            }
+            for (let c = 0; c < holeCount; c++) {
+                strips.push(createVerticalStrip(this, "B"+c, 4));
+                strips.push(createVerticalStrip(this, "F"+c, 2));
+                strips.push(createVerticalStrip(this, "H"+c, 4));
+                strips.push(createVerticalStrip(this, "N"+c, 2));
+                strips.push(createVerticalStrip(this, "P"+c, 2));
+                strips.push(createVerticalStrip(this, "R"+c, 2));
+                strips.push(createVerticalStrip(this, "T"+c, 2));
+                strips.push(createVerticalStrip(this, "V"+c, 2));
+            }
+            return strips;
+        },
+
+        makeStrips: function(layout) {
+            if (layout == "protoboard") {
+                return this.makeProtoboardStrips();
+            }
+            if (layout == "breadboard") {
+                return this.makeBreadboardStrips();
+            }
+            if (layout == "sb4") {
+                return this.makeSB4Strips(true);
+            }
+            if (layout == "sb4-horiz") {
+                return this.makeSB4HorizStrips(true);
+            }
+            if (layout == "sb4half") {
+                return this.makeSB4Strips(false);
+            }
+            return this.makeStripboardStrips();
+        },
+
         swapView: function() {
             if (this.viewOrientation == "FRONT") {
                 this.viewOrientation = "BACK";
@@ -1613,7 +1616,7 @@ var Stripboard = (function() {
         holeCount = Math.floor(boardWidth / kStripSize + kStripSize / 2);
 
         rows = makeRows(rowCount);
-        strips = makeStrips(circuit.layout);
+        strips = board.makeStrips(circuit.layout);
 
         // Iterate cuts and add them to the strips
         if (circuit.cuts !== undefined) {
