@@ -247,7 +247,6 @@ var Stripboard = (function() {
     let refToNet = {};
 
     let legend = null;
-    let board = null;
 
     /******************
     * Refs
@@ -1455,19 +1454,17 @@ var Stripboard = (function() {
         return group;
     }
 
-    let view = "FRONT";
-
-    function swapView() {
-        if (view == "FRONT") {
-            view = "BACK";
-            board.setAttribute("transform", `matrix(-1 0 0 1 ${toPixels(boardWidth)} 0)`);
-            board.classList.remove("front-view");
-            board.classList.add("back-view");
+    function swapView(board) {
+        if (board.viewOrientation == "FRONT") {
+            board.viewOrientation = "BACK";
+            board.svgElement.setAttribute("transform", `matrix(-1 0 0 1 ${toPixels(boardWidth)} 0)`);
+            board.svgElement.classList.remove("front-view");
+            board.svgElement.classList.add("back-view");
         } else {
-            view = "FRONT";
-            board.setAttribute("transform", "");
-            board.classList.add("front-view");
-            board.classList.remove("back-view");
+            board.viewOrientation = "FRONT";
+            board.svgElement.setAttribute("transform", "");
+            board.svgElement.classList.add("front-view");
+            board.svgElement.classList.remove("back-view");
         }
     }
 
@@ -1483,15 +1480,16 @@ var Stripboard = (function() {
             this.hoverTextElt = svgTextPx(4, this.height - 4, "", "hover");
             this.posTextElt = svgTextPx(124, this.height - 4, "", "pos");
             this.netTextElt = svgTextPx(258, this.height - 4, "", "net");
-            let viewControl = svgTextPx(this.width - 60, this.height - 4, view, "view");
+            let viewControl = svgTextPx(this.width - 60, this.height - 4,
+                                        this.board.viewOrientation, "view");
             group.appendChild(background);
             group.appendChild(this.hoverTextElt);
             group.appendChild(this.posTextElt);
             group.appendChild(this.netTextElt);
             group.appendChild(viewControl);
             viewControl.addEventListener("click", function (event) {
-                swapView();
-                event.target.textContent = view;
+                swapView(this.board);
+                event.target.textContent = this.board.viewOrientation;
             }.bind(this));
             let legendContainer = svgGroup("legend-container");
             legendContainer.appendChild(group);
@@ -1509,8 +1507,9 @@ var Stripboard = (function() {
     };
 
     const kLegendHeight = 20;
-    function makeLegend(x, y, width) {
+    function makeLegend(board, x, y, width) {
         return extend(Object.create(LegendPrototype), {
+            board: board,
             x: x,
             y: y,
             width: width,
@@ -1521,15 +1520,36 @@ var Stripboard = (function() {
         });
     }
 
+    /******************
+     * Board
+     */
+    let BoardPrototype = {
+        init: function() {
+
+        }
+    };
+
+    function makeBoard(root, circuit) {
+        let board = extend(Object.create(BoardPrototype), {
+            root: root,
+            circuit: circuit,
+            viewOrientation: "FRONT",
+            svgElement: null
+        });
+        board.init();
+        return board;
+    }
+
+
     function onMouseMove(event) {
-        let rect = this.getBoundingClientRect(),
+        let rect = this.svgElement.getBoundingClientRect(),
             x = event.clientX - rect.left,
             y = event.clientY - rect.top;
         let pos = {
             x: toInches(x),
             y: toInches(y)
         }
-        if (view == "BACK") {
+        if (this.viewOrientation == "BACK") {
             // handle view being flipped
             pos.x = boardWidth - pos.x;
         }
@@ -1549,7 +1569,9 @@ var Stripboard = (function() {
         }
     }
 
-    function initStripboard(root, circuit) {
+    // Some circuits have pre-defined dimensions. Set the dimensions if a
+    // standard layout is specified.
+    function setCircuitDimensions(circuit) {
         if (circuit.layout == "sb4") {
             circuit.dimensions = {
                 width: 2.4,
@@ -1568,6 +1590,12 @@ var Stripboard = (function() {
                 height: 1.9
             };
         }
+    }
+
+    function initStripboard(root, circuit) {
+        setCircuitDimensions(circuit);
+       
+        let board = makeBoard(root, circuit);
         boardHeight = circuit.dimensions.height;
         boardWidth = circuit.dimensions.width;
         rowCount = Math.floor(boardHeight / kStripSize + kStripSize / 2);
@@ -1575,8 +1603,6 @@ var Stripboard = (function() {
 
         rows = makeRows(rowCount);
         strips = makeStrips(circuit.layout);
-
-        legend = makeLegend(0, root.clientHeight - kLegendHeight, root.clientWidth);
 
         // Iterate cuts and add them to the strips
         if (circuit.cuts !== undefined) {
@@ -1624,17 +1650,20 @@ var Stripboard = (function() {
         }
 
         root.appendChild(makeRulers());
-        board = svgGroup("board front-view");
-        board.appendChild(makeBackground());
-        board.appendChild(spansSvg());
-        board.appendChild(wiresSvg());
-        board.appendChild(componentsSvg());
+
+        legend = makeLegend(board, 0, root.clientHeight - kLegendHeight, root.clientWidth);
+
+        board.svgElement = svgGroup("board front-view");
+        board.svgElement.appendChild(makeBackground());
+        board.svgElement.appendChild(spansSvg());
+        board.svgElement.appendChild(wiresSvg());
+        board.svgElement.appendChild(componentsSvg());
         let view = svgGroup("view");
-        view.appendChild(board);
+        view.appendChild(board.svgElement);
         root.appendChild(view);
         root.appendChild(legend.makeSvg());
 
-        board.addEventListener("mousemove", onMouseMove.bind(board));
+        board.svgElement.addEventListener("mousemove", onMouseMove.bind(board));
 
         view.addEventListener("mouseleave", function (event) {
             legend.setPositionContent("");
