@@ -1642,18 +1642,8 @@ var Stripboard = (function() {
         });
     }
 
-    // Initialize all SVG elements with class "stribpoard" to show the
-    // given circuit... It is probably a silly function
-    function initAll(circuit) {
-        $ALL("svg.stripboard").forEach((el) => {
-            console.log("initializing stripboard ", el);
-            initStripboard(el, circuit);
-        });
-    }
-
     return {
         init: initStripboard,
-        initAll: initAll,
 
         // returned for testing
         getSpans: function() { return spans; },
