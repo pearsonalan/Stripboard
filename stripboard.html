@@ -10,8 +10,9 @@
     </head>
     <body>
         <script lang="javascript">
+            var BOARD = null;
             window.addEventListener("DOMContentLoaded", function() {
-                Stripboard.init($ID("stripboard"), CIRCUIT);
+                BOARD = Stripboard.init($ID("stripboard"), CIRCUIT);
             });
         </script>
         <h1>Stripboard</h1>

@@ -1610,12 +1610,12 @@ var Stripboard = (function() {
         setCircuitDimensions(circuit);
        
         let board = makeBoard(root, circuit);
-        g_boardHeight = circuit.dimensions.height;
-        g_boardWidth = circuit.dimensions.width;
-        g_rowCount = Math.floor(g_boardHeight / kStripSize + kStripSize / 2);
-        g_holeCount = Math.floor(g_boardWidth / kStripSize + kStripSize / 2);
+        g_boardHeight = board.height;
+        g_boardWidth = board.width;
+        g_rowCount = board.rowCount;
+        g_holeCount = board.holeCount;
 
-        g_rows = makeRows(g_rowCount);
+        g_rows = makeRows(board.rowCount);
         g_strips = board.makeStrips(circuit.layout);
 
         // Iterate cuts and add them to the strips
@@ -1688,17 +1688,6 @@ var Stripboard = (function() {
     }
 
     return {
-        init: initStripboard,
-
-        // returned for testing
-        getSpans: function() { return g_spans; },
-        getComponents: function() { return g_components; },
-        getSpanAtRef: getSpanAtRef,
-        getStripAtRef: getStripAtRef,
-        POS: POS,
-        HOLE: HOLE,
-        getRow: getRow,
-        REF: REF,
-        TREF: TREF
+        init: initStripboard
     };
 })();
