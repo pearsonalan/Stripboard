@@ -221,11 +221,6 @@ var Stripboard = (function() {
     // The height of the board in inches
     let g_boardHeight = 0;
 
-    // the number of rows on the board vertically. This is the height divided by the
-    // strip size.
-    let g_rowCount = 0;
-    let g_holeCount = 0;
-
     // A mapping from row name (e.g. "A" or "AC") to a row object
     let g_rows = {};
 
@@ -1320,8 +1315,6 @@ var Stripboard = (function() {
         init: function() {
             g_boardHeight = this.height;
             g_boardWidth = this.width;
-            g_rowCount = this.rowCount;
-            g_holeCount = this.holeCount;
 
             this.initRows();
             g_rows = this.rows;
@@ -1340,8 +1333,8 @@ var Stripboard = (function() {
         // Stripboard strips are horizontal strips, one per row
         makeStripboardStrips: function() {
             let strips = [];
-            for (const [key, row] of Object.entries(g_rows)) {
-                strips.push(createHorizontalStrip(this, row.startRef(), g_holeCount));
+            for (const [key, row] of Object.entries(this.rows)) {
+                strips.push(createHorizontalStrip(this, row.startRef(), this.holeCount));
             }
             return strips;
         },
@@ -1350,10 +1343,10 @@ var Stripboard = (function() {
         // in the middle.
         makeProtoboardStrips: function() {
             let strips = [];
-            strips.push(createVerticalStrip(this, "A0", g_rowCount));
-            strips.push(createVerticalStrip(this, offsetRef("A0", 0, g_holeCount-1), g_rowCount));
-            for (const [key, row] of Object.entries(g_rows)) {
-                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 1), g_holeCount - 2));
+            strips.push(createVerticalStrip(this, "A0", this.rowCount));
+            strips.push(createVerticalStrip(this, offsetRef("A0", 0, this.holeCount-1), this.rowCount));
+            for (const [key, row] of Object.entries(this.rows)) {
+                strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 1), this.holeCount - 2));
             }
             return strips;
         },
@@ -1362,14 +1355,14 @@ var Stripboard = (function() {
         // in the middle and a gap.
         makeBreadboardStrips: function() {
             let strips = [];
-            strips.push(createVerticalStrip(this, "A0", g_rowCount));
-            strips.push(createVerticalStrip(this, "A1", g_rowCount));
-            for (const [key, row] of Object.entries(g_rows)) {
+            strips.push(createVerticalStrip(this, "A0", this.rowCount));
+            strips.push(createVerticalStrip(this, "A1", this.rowCount));
+            for (const [key, row] of Object.entries(this.rows)) {
                 strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 2), 5));
                 strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 9), 5));
             }
-            strips.push(createVerticalStrip(this, "A14", g_rowCount));
-            strips.push(createVerticalStrip(this, "A15", g_rowCount));
+            strips.push(createVerticalStrip(this, "A14", this.rowCount));
+            strips.push(createVerticalStrip(this, "A15", this.rowCount));
             return strips;
         },
 
@@ -1385,7 +1378,7 @@ var Stripboard = (function() {
                 strips.push(createVerticalStrip(this, "T12", 19));
                 strips.push(createVerticalStrip(this, "T23", 19));
             }
-            for (const [key, row] of Object.entries(g_rows)) {
+            for (const [key, row] of Object.entries(this.rows)) {
                 strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 1), 4));
                 strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 5), 2));
                 strips.push(createHorizontalStrip(this, offsetRef(row.startRef(), 0, 7), 4));
@@ -1410,7 +1403,7 @@ var Stripboard = (function() {
                 strips.push(createHorizontalStrip(this, "M19", 19));
                 strips.push(createHorizontalStrip(this, "X19", 19));
             }
-            for (let c = 0; c < g_holeCount; c++) {
+            for (let c = 0; c < this.holeCount; c++) {
                 strips.push(createVerticalStrip(this, "B"+c, 4));
                 strips.push(createVerticalStrip(this, "F"+c, 2));
                 strips.push(createVerticalStrip(this, "H"+c, 4));
@@ -1584,6 +1577,47 @@ var Stripboard = (function() {
         makeLegend: function() {
             this.legend = makeLegend(this, 0, this.root.clientHeight - kLegendHeight, this.root.clientWidth);
             return this.legend;
+        },
+
+        // Given a position with {x,y} in inches, return the ref at that position
+        // or undefined
+        refAtPos: function(pos) {
+            if (pos.x === undefined || pos.y === undefined ||
+                pos.x < 0 || pos.x > this.width ||
+                pos.y < 0 || pos.y > this.height) {
+                return undefined;
+            }
+            let hole = Math.floor(pos.x / kStripSize),
+                r = Math.floor(pos.y / kStripSize),
+                row = makeRowName(r);
+            return {
+                row: row,
+                r: r,
+                hole: hole
+            };
+        },
+
+        // Given a ref or a string return the row
+        getRow: function(ref) {
+            let pref = REF(ref);
+            return this.rows[pref.row];
+        },
+
+        // Given a ref or a string, return the {x,y} coordinates of the center of
+        // the hole at the ref location.
+        getPoint: function(ref) {
+            let pref = REF(ref);
+            return this.getRow(pref).holePos(pref.hole);
+        },
+
+        HOLE: function(ref) {
+            let pref = REF(ref);
+            return this.getRow(pref).holePos(pref.hole);
+        },
+
+        POS: function(ref) {
+            let pref = REF(ref);
+            return this.getRow(pref).getPos(pref.hole);
         },
 
         getNetAtRef: function(ref) {
