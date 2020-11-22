@@ -543,11 +543,6 @@ var Stripboard = (function() {
         return strip;
     }
 
-    function g_getStripAtRef(ref) {
-        let tref = TREF(ref);
-        return g_refToStrip[tref];
-    }
-
     function stripsSvg(strips) {
         let stripGroup = svgGroup("strips");
         for (const strip of strips) {
@@ -661,7 +656,7 @@ var Stripboard = (function() {
             return group;
         },
         fromStrip: function() {
-            return g_getStripAtRef(this.fromRef);
+            return this.board.getStripAtRef(this.fromRef);
         },
         fromSpan: function() {
             return g_getSpanAtRef(this.fromRef);
@@ -670,7 +665,7 @@ var Stripboard = (function() {
             return this.board.getPoint(this.fromRef);
         },
         toStrip: function() {
-            return g_getStripAtRef(this.toRef);
+            return this.board.getStripAtRef(this.toRef);
         },
         toSpan: function() {
             return g_getSpanAtRef(this.toRef);
@@ -750,7 +745,7 @@ var Stripboard = (function() {
     // Prototype for compnents that connect two Refs (such as a Resistor or Capacitor)
     let PointToPointComponentPrototype = {
         fromStrip: function() {
-            return g_getStripAtRef(this.fromRef);
+            return this.board.getStripAtRef(this.fromRef);
         },
         fromSpan: function() {
             return g_getSpanAtRef(this.fromRef);
@@ -759,7 +754,7 @@ var Stripboard = (function() {
             return this.board.getPoint(this.fromRef);
         },
         toStrip: function() {
-            return g_getStripAtRef(this.toRef);
+            return this.board.getStripAtRef(this.toRef);
         },
         toSpan: function() {
             return g_getSpanAtRef(this.toRef);
@@ -1395,7 +1390,7 @@ var Stripboard = (function() {
             // Iterate cuts and add them to the strips
             for (const cut of this.circuit.cuts) {
                 let ref = parseRef(cut);
-                let strip = g_getStripAtRef(ref);
+                let strip = this.getStripAtRef(ref);
                 strip.addCut(ref);
             }
         },
@@ -1576,6 +1571,11 @@ var Stripboard = (function() {
         POS: function(ref) {
             let pref = REF(ref);
             return this.getRow(pref).getPos(pref.hole);
+        },
+
+        getStripAtRef: function(ref) {
+            let tref = TREF(ref);
+            return this.refToStrip[tref];
         },
 
         getNetAtRef: function(ref) {
