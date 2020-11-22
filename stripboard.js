@@ -1667,16 +1667,17 @@ var Stripboard = (function() {
     }
 
     function initStripboard(root, circuit) {
+        // Some cicuit layouts have implicit dimensions.  This Sets the
+        // dimensions if such a layout is specified.
         setCircuitDimensions(circuit);
        
+        // Build object heirarchy
         let board = makeBoard(root, circuit);
-
         board.loadCircuit();
-
-        root.appendChild(makeRulers(board.width, board.height));
-
         board.makeLegend();
 
+        // build SVG rendering of board
+        root.appendChild(makeRulers(board.width, board.height));
         board.svgElement = svgGroup("board front-view");
         board.svgElement.appendChild(board.makeBackground());
         board.svgElement.appendChild(spansSvg(board.spans));
@@ -1687,8 +1688,8 @@ var Stripboard = (function() {
         root.appendChild(view);
         root.appendChild(board.legend.makeSvg());
 
+        // Add mouse envent handlers
         board.svgElement.addEventListener("mousemove", onMouseMove.bind(board));
-
         view.addEventListener("mouseleave", function (event) {
             this.legend.setPositionContent("");
             this.legend.setNetContent("");
