@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Two Circuits test</title>
+    <script src="../stripboard.js" lang="javascript"></script>
+    <link href="../reset.css" rel="stylesheet">
+    <link href="../stripboard.css" rel="stylesheet">
+    <style>
+body {
+    margin: 8px;
+}
+
+h1 {
+    margin-top: 16px;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: 18px;
+}
+
+svg {
+    border: 1px solid black;
+}
+    </style>
+</head>
+<body>
+    <script lang="javascript">
+let CIRCUIT_1 = {
+    dimensions: {
+        width: 1.5,
+        height: 0.8
+    },
+    wires: [
+        { from: "C3", to: "E3" }
+    ],
+    nets: {
+        "A0": "Vin",
+        "B0": "GND",
+        "C0": "Vout"
+    },
+    components: [
+        { type: "header", from: "A1", to: "C1" },
+        { label: "R1", type: "resistor", from: "A5", to: "E5", },
+        { label: "C1", type: "capacitor", from: "B7", to: "E7", },
+    ]
+};
+let CIRCUIT_2 = {
+    dimensions: {
+        width: 1.8,
+        height: 1.2
+    },
+    cuts: [
+        "A10"
+    ],
+    wires: [
+        { from: "C3", to: "E3" }
+    ],
+    nets: {
+        "A0": "Vin",
+        "B0": "GND",
+        "C0": "Vout"
+    },
+    components: [
+        { type: "header", from: "A1", to: "C1" },
+        { label: "R1", type: "resistor", from: "A8", to: "E8", },
+        { label: "C1", type: "capacitor", from: "B12", to: "E12", },
+    ]
+};
+window.addEventListener("DOMContentLoaded", function() {
+    Stripboard.init($ID("circuit-1"), CIRCUIT_1);
+    Stripboard.init($ID("circuit-2"), CIRCUIT_2);
+});
+        </script>
+        <h1>Circuit 1</h1>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            id="circuit-1" class="stripboard" width="440" height="380"></svg>
+        <h1>Circuit 2</h1>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            id="circuit-2" class="stripboard" width="440" height="380"></svg>
+    </body>
+</html>
