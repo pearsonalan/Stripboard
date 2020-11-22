@@ -229,22 +229,11 @@ var Stripboard = (function() {
     // A mapping from row name (e.g. "A" or "AC") to a row object
     let g_rows = {};
 
-    // An array of all the strips on the board
-    let g_strips = [];
-
-    // An array of all the spans on the board
-    let g_spans = [];
-    let g_wires = [];
-    let g_components = [];
-
     // A mapping from text ref (e.g. "A0") to the strip that contains that ref
     let g_refToStrip = {};
 
     // A mapping from text ref (e.g. "A0") to the span that contains that ref
     let g_refToSpan = {};
-
-    // A mapping from text ref (e.g. "A0") to the net that contains that ref
-    let g_refToNet = {};
 
     let g_legend = null;
 
@@ -381,15 +370,6 @@ var Stripboard = (function() {
         });
     }
 
-    function makeRows(rowCount) {
-        let rows = {};
-        for (let r = 0; r < rowCount; r++) {
-            let name = makeRowName(r);
-            rows[name] = createRow(name, r);
-        }
-        return rows;
-    }
-
     // Given a ref or a string return the row
     function g_getRow(ref) {
         let pref = REF(ref);
@@ -438,8 +418,9 @@ var Stripboard = (function() {
         makeSpans: function() {
             let defineSpan = function(start, end) {
                 // console.log(`Defining span on strip ${this.name} from ${TREF(start)} to ${TREF(end)}.`);
-                g_spans.push(g_makeSpan(this, start, end));
+                this.board.addSpan(makeSpan(this, start, end));
             }.bind(this);
+
             if (this.cuts.length == 0) {
                 // If the strip has no cuts, the whole strip is a single span
                 defineSpan(this.startRef, this.endRef);
@@ -619,9 +600,9 @@ var Stripboard = (function() {
         return g_refToStrip[tref];
     }
 
-    function g_stripsSvg() {
+    function stripsSvg(strips) {
         let stripGroup = svgGroup("strips");
-        for (const strip of g_strips) {
+        for (const strip of strips) {
             stripGroup.appendChild(strip.makeSvg());
         }
         return stripGroup;
@@ -660,7 +641,7 @@ var Stripboard = (function() {
         }
     };
 
-    function g_makeSpan(strip, startRef, endRef) {
+    function makeSpan(strip, startRef, endRef) {
         let span = extend(Object.create(SpanPrototype), {
             name: `${TREF(startRef)}:${TREF(endRef)}`,
             strip: strip,
@@ -671,27 +652,12 @@ var Stripboard = (function() {
             net: undefined
         });
 
-        // Update the ref -> span map for all the refs in the span
-        for (let ref = span.startRef; ref !== undefined; ref = span.nextRef(ref)) {
-            let tref = TREF(ref);
-            // console.log(`setting span at ${tref} to ${span.name}`);
-            g_refToSpan[tref] = span;
-        }
-
         return span;
     }
 
-    // Iterates the strips after cuts have been assigned and builds spans
-    // from the un-cut sections
-    function g_makeSpans() {
-        for (const strip of g_strips) {
-            strip.makeSpans();
-        }
-    }
-
-    function g_spansSvg() {
+    function spansSvg(spans) {
         let group = svgGroup("spans");
-        for (const span of g_spans) {
+        for (const span of spans) {
             group.appendChild(span.makeSvg());
         }
         return group;
@@ -721,54 +687,6 @@ var Stripboard = (function() {
             name: name,
             spans: [],
         });
-    }
-
-    // Iterates the spans after strips have been split into spans to create nets
-    function g_makeNets() {
-        let n = 0;
-        let visited = new Map();
-        for (const span of g_spans) {
-            // If the span has any wires or components connected to it and the span is
-            // not already in a net, make a net
-            if ((span.wires.length > 0 || span.components.length > 0) && span.net === undefined) {
-                let net = makeNet(`N${n}`);
-                let searchSpans = [],
-                    s = undefined;
-
-                // Add the starting span to the searchSpans array
-                searchSpans.push(span);
-                while ((s = searchSpans.shift()) !== undefined) {
-                    if (visited.get(s)) continue;
-                    visited.set(s, true);
-                    net.addSpan(s);
-                    s.net = net;
-                    // Add any spans connected by wires to s to the searchSpans array if they have
-                    // not been visited.
-                    for (const wire of s.wires) {
-                        if (!visited.get(wire.fromSpan())) searchSpans.push(wire.fromSpan());
-                        if (!visited.get(wire.toSpan())) searchSpans.push(wire.toSpan());
-                    }
-                }
-                n++;
-            }
-        }
-        console.log(`Created ${n} nets.`);
-
-        // Update the ref -> net map for all the refs in spans that have nets
-        for (const span of g_spans) {
-            if (span.net !== undefined) {
-                for (let ref = span.startRef; ref !== undefined; ref = span.nextRef(ref)) {
-                    let tref = TREF(ref);
-                    g_refToNet[tref] = span.net;
-                }
-            }
-        }
-
-    }
-
-    function g_getNetAtRef(ref) {
-        let tref = TREF(ref);
-        return g_refToNet[tref];
     }
 
     /******************
@@ -1310,22 +1228,13 @@ var Stripboard = (function() {
     * Background
     */
 
-    function g_makeBackground(board) {
-        let backgroundGroup = svgGroup(),
-            rect = svgRect(-kBoardPadding, -kBoardPadding, board.width + 2 * kBoardPadding, board.height + 2 * kBoardPadding);
-        backgroundGroup.setAttribute("class", "background");
-        backgroundGroup.appendChild(rect);
-        backgroundGroup.appendChild(g_stripsSvg());
-        return backgroundGroup;
-    }
-
-    function g_wiresSvg() {
+    function wiresSvg(wires) {
         let wiresGroup = svgGroup("wires"),
             front = svgGroup("front"),
             back = svgGroup("back");
         wiresGroup.appendChild(front);
         wiresGroup.appendChild(back);
-        for (const wire of g_wires) {
+        for (const wire of wires) {
             if (wire.layer() == "back") {
                 back.appendChild(wire.makeSvg());
             } else {
@@ -1335,13 +1244,13 @@ var Stripboard = (function() {
         return wiresGroup;
     }
 
-    function g_componentsSvg() {
+    function componentsSvg(components) {
         let group = svgGroup("components"),
             front = svgGroup("front"),
             back = svgGroup("back");
         group.appendChild(front);
         group.appendChild(back);
-        for (const component of g_components) {
+        for (const component of components) {
             if (component.layer !== undefined && component.layer() == "back") {
                 back.appendChild(component.makeSvg());
             } else {
@@ -1409,7 +1318,23 @@ var Stripboard = (function() {
     
     let BoardPrototype = {
         init: function() {
+            g_boardHeight = this.height;
+            g_boardWidth = this.width;
+            g_rowCount = this.rowCount;
+            g_holeCount = this.holeCount;
 
+            this.initRows();
+            g_rows = this.rows;
+
+            this.initStrips();
+        },
+
+        initRows: function() {
+            this.rows = {};
+            for (let r = 0; r < this.rowCount; r++) {
+                let name = makeRowName(r);
+                this.rows[name] = createRow(name, r);
+            }
         },
 
         // Stripboard strips are horizontal strips, one per row
@@ -1498,23 +1423,148 @@ var Stripboard = (function() {
             return strips;
         },
 
-        makeStrips: function(layout) {
-            if (layout == "protoboard") {
-                return this.makeProtoboardStrips();
+        initStrips: function() {
+            if (this.circuit.layout == "protoboard") {
+                this.strips = this.makeProtoboardStrips();
+            } else if (this.circuit.layout == "breadboard") {
+                this.strips = this.makeBreadboardStrips();
+            } else if (this.circuit.layout == "sb4") {
+                this.strips = this.makeSB4Strips(true);
+            } else if (this.circuit.layout == "sb4-horiz") {
+                this.strips = this.makeSB4HorizStrips(true);
+            } else if (this.circuit.layout == "sb4half") {
+                this.strips = this.makeSB4Strips(false);
+            } else {
+                this.strips = this.makeStripboardStrips();
             }
-            if (layout == "breadboard") {
-                return this.makeBreadboardStrips();
+        },
+
+        loadCuts: function() {
+            if (this.circuit.cuts === undefined) return;
+
+            // Iterate cuts and add them to the strips
+            for (const cut of this.circuit.cuts) {
+                let ref = parseRef(cut);
+                let strip = g_getStripAtRef(ref);
+                strip.addCut(ref);
             }
-            if (layout == "sb4") {
-                return this.makeSB4Strips(true);
+        },
+
+        // Iterates the strips after cuts have been assigned and builds spans
+        // from the un-cut sections
+        makeSpans: function() {
+            for (const strip of this.strips) {
+                strip.makeSpans();
             }
-            if (layout == "sb4-horiz") {
-                return this.makeSB4HorizStrips(true);
+        },
+
+        addSpan: function(span) {
+            this.spans.push(span);
+
+            // Update the ref -> span map for all the refs in the span
+            for (let ref = span.startRef; ref !== undefined; ref = span.nextRef(ref)) {
+                let tref = TREF(ref);
+                // console.log(`setting span at ${tref} to ${span.name}`);
+                g_refToSpan[tref] = span;
             }
-            if (layout == "sb4half") {
-                return this.makeSB4Strips(false);
+        },
+
+        // Iterates the spans after strips have been split into spans to create nets
+        makeNets: function() {
+            let n = 0;
+            let visited = new Map();
+            for (const span of this.spans) {
+                // If the span has any wires or components connected to it and the span is
+                // not already in a net, make a net
+                if ((span.wires.length > 0 || span.components.length > 0) && span.net === undefined) {
+                    let net = makeNet(`N${n}`);
+                    let searchSpans = [],
+                        s = undefined;
+
+                    // Add the starting span to the searchSpans array
+                    searchSpans.push(span);
+                    while ((s = searchSpans.shift()) !== undefined) {
+                        if (visited.get(s)) continue;
+                        visited.set(s, true);
+                        net.addSpan(s);
+                        s.net = net;
+                        // Add any spans connected by wires to s to the searchSpans array if they have
+                        // not been visited.
+                        for (const wire of s.wires) {
+                            if (!visited.get(wire.fromSpan())) searchSpans.push(wire.fromSpan());
+                            if (!visited.get(wire.toSpan())) searchSpans.push(wire.toSpan());
+                        }
+                    }
+                    n++;
+                }
             }
-            return this.makeStripboardStrips();
+            console.log(`Created ${n} nets.`);
+
+            // Update the ref -> net map for all the refs in spans that have nets
+            for (const span of this.spans) {
+                if (span.net !== undefined) {
+                    for (let ref = span.startRef; ref !== undefined; ref = span.nextRef(ref)) {
+                        let tref = TREF(ref);
+                        this.refToNet[tref] = span.net;
+                    }
+                }
+            }
+        },
+
+        loadWires: function() {
+            if (this.circuit.wires === undefined) return;
+
+            // Iterate wires
+            for (const wireSpec of this.circuit.wires) {
+                let wire = createWire(wireSpec);
+                this.wires.push(wire);
+            }
+        },
+
+        loadComponents: function() {
+            if (this.circuit.components === undefined) return;
+
+            for (const componentSpec of this.circuit.components) {
+                let component = createComponent(componentSpec);
+                if (component !== undefined) {
+                    this.components.push(component);
+                    if (component.addToSpans !== undefined) {
+                        component.addToSpans();
+                    }
+                }
+            }
+        },
+
+        loadNets: function() {
+            this.makeNets();
+
+            // Use the nets map in the circuit to give names to some nets.
+            if (this.circuit.nets !== undefined) {
+                for (const [ref, netname] of Object.entries(this.circuit.nets)) {
+                    let net = this.getNetAtRef(ref);
+                    if (net !== undefined) {
+                        net.name = netname;
+                    }
+                }
+            }
+        },
+
+        loadCircuit: function() {
+            this.loadCuts();
+            this.makeSpans();
+            this.loadWires();
+            this.loadComponents();
+            this.loadNets();
+        },
+
+        makeBackground: function() {
+            let backgroundGroup = svgGroup(),
+                rect = svgRect(-kBoardPadding, -kBoardPadding,
+                               this.width + 2 * kBoardPadding, this.height + 2 * kBoardPadding);
+            backgroundGroup.setAttribute("class", "background");
+            backgroundGroup.appendChild(rect);
+            backgroundGroup.appendChild(stripsSvg(this.strips));
+            return backgroundGroup;
         },
 
         swapView: function() {
@@ -1530,9 +1580,15 @@ var Stripboard = (function() {
                 this.svgElement.classList.remove("back-view");
             }
         },
+
         makeLegend: function() {
             this.legend = makeLegend(this, 0, this.root.clientHeight - kLegendHeight, this.root.clientWidth);
             return this.legend;
+        },
+
+        getNetAtRef: function(ref) {
+            let tref = TREF(ref);
+            return this.refToNet[tref];
         }
     };
 
@@ -1548,7 +1604,32 @@ var Stripboard = (function() {
             holeCount: Math.floor(width / kStripSize + kStripSize / 2),
             viewOrientation: "FRONT",
             svgElement: null,
-            legend: null
+            
+            // Legend object to manage the Legend view at the bottom of
+            // the board SVG
+            legend: null,
+
+            // A mapping from row name (e.g. "A" or "AC") to a row object
+            rows: {},
+
+            // An array of all the strips on the board
+            strips: [],
+
+            // Array of all the spans on the board
+            spans: [],
+
+            // Arrays of wires and components on the board
+            wires: [],
+            components: [],
+
+            // A mapping from text ref (e.g. "A0") to the strip that contains that ref
+            refToStrip: {},
+
+            // A mapping from text ref (e.g. "A0") to the span that contains that ref
+            refToSpan: {},
+
+            // A mapping from text ref (e.g. "A0") to the net that contains that ref
+            refToNet: {}
         });
         board.init();
         return board;
@@ -1565,7 +1646,7 @@ var Stripboard = (function() {
         }
         if (this.viewOrientation == "BACK") {
             // handle view being flipped
-            pos.x = g_boardWidth - pos.x;
+            pos.x = this.width - pos.x;
         }
         let posText = `[${pos.x.toFixed(2)},${pos.y.toFixed(2)}]`;
         let ref = g_refAtPos(pos);
@@ -1573,7 +1654,7 @@ var Stripboard = (function() {
         if (ref !== undefined) {
             let tref = TREF(ref);
             posText = posText + " " + tref;
-            net = g_getNetAtRef(tref);
+            net = this.getNetAtRef(tref);
         }
         this.legend.setPositionContent(posText);
         if (net === undefined) {
@@ -1610,68 +1691,18 @@ var Stripboard = (function() {
         setCircuitDimensions(circuit);
        
         let board = makeBoard(root, circuit);
-        g_boardHeight = board.height;
-        g_boardWidth = board.width;
-        g_rowCount = board.rowCount;
-        g_holeCount = board.holeCount;
 
-        g_rows = makeRows(board.rowCount);
-        g_strips = board.makeStrips(circuit.layout);
-
-        // Iterate cuts and add them to the strips
-        if (circuit.cuts !== undefined) {
-            for (const cut of circuit.cuts) {
-                let ref = parseRef(cut);
-                let strip = g_getStripAtRef(ref);
-                strip.addCut(ref);
-            }
-        }
-
-        // Create spans from the connected portions of the strips
-        g_makeSpans();
-
-        // Iterate wires
-        if (circuit.wires !== undefined) {
-            for (const wireSpec of circuit.wires) {
-                let wire = createWire(wireSpec);
-                g_wires.push(wire);
-            }
-        }
-
-        if (circuit.components !== undefined) {
-            for (const componentSpec of circuit.components) {
-                let component = createComponent(componentSpec);
-                if (component !== undefined) {
-                    g_components.push(component);
-                    if (component.addToSpans !== undefined) {
-                        component.addToSpans();
-                    }
-                }
-            }
-        }
-
-        // Once wires and components have been added, we can create nets
-        g_makeNets();
-
-        // Use the nets map in the circuit to give names to some nets.
-        if (circuit.nets !== undefined) {
-            for (const [ref, netname] of Object.entries(circuit.nets)) {
-                let net = g_getNetAtRef(ref);
-                if (net !== undefined) {
-                    net.name = netname;
-                }
-            }
-        }
+        board.loadCircuit();
 
         root.appendChild(makeRulers(board.width, board.height));
 
         g_legend = board.makeLegend();
 
         board.svgElement = svgGroup("board front-view");
-        board.svgElement.appendChild(g_makeBackground(board));
-        board.svgElement.appendChild(g_spansSvg());
-        board.svgElement.appendChild(g_wiresSvg());
-        board.svgElement.appendChild(g_componentsSvg());
+        board.svgElement.appendChild(board.makeBackground());
+        board.svgElement.appendChild(spansSvg(board.spans));
+        board.svgElement.appendChild(wiresSvg(board.wires));
+        board.svgElement.appendChild(componentsSvg(board.components));
         let view = svgGroup("view");
         view.appendChild(board.svgElement);
         root.appendChild(view);
