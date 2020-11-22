@@ -215,9 +215,6 @@ var Stripboard = (function() {
     // TODO: Move all of these into a "Board" object so we can have more than one
     // board on a page.
 
-    // A mapping from text ref (e.g. "A0") to the strip that contains that ref
-    let g_refToStrip = {};
-
     // A mapping from text ref (e.g. "A0") to the span that contains that ref
     let g_refToSpan = {};
 
@@ -465,7 +462,6 @@ var Stripboard = (function() {
         for (let i = 0; i < holes; i++) {
             let ref = TREF(offsetRef(startRef, 0, i));
             board.refToStrip[ref] = strip;
-            g_refToStrip[ref] = strip;
         }
 
         return strip;
@@ -537,7 +533,6 @@ var Stripboard = (function() {
         for (let i = 0; i < holes; i++) {
             let ref = TREF(offsetRef(startRef, i, 0));
             board.refToStrip[ref] = strip;
-            g_refToStrip[ref] = strip;
         }
 
         return strip;
