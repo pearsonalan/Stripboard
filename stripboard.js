@@ -212,13 +212,6 @@ var Stripboard = (function() {
     const kFilledHoleRadius = 0.025;
     const kBoardPadding = 0.02;
 
-    // TODO: Move all of these into a "Board" object so we can have more than one
-    // board on a page.
-
-    // A mapping from text ref (e.g. "A0") to the span that contains that ref
-    let g_refToSpan = {};
-
-    let g_legend = null;
 
     /******************
     * Refs
@@ -346,12 +339,12 @@ var Stripboard = (function() {
     */
 
     // Hander for hover over an element
-    function g_onHover(text, el, event) {
-        g_legend.setHoverContent(text);
+    function onHover(strip, text, el, event) {
+        strip.board.legend.setHoverContent(text);
     }
 
-    function g_onMouseLeave(event) {
-        g_legend.setHoverContent("");
+    function onMouseLeave(strip, event) {
+        strip.board.legend.setHoverContent("");
     }
 
     let StripPrototype = {
@@ -417,15 +410,15 @@ var Stripboard = (function() {
                                kStripPadding,
                                this.holes * kStripSize - 2 * kStripPadding,
                                kStripWidth);
-            rect.addEventListener("mouseover", g_onHover.curry(`STRIP ${this.name}`, rect));
-            rect.addEventListener("mouseleave", g_onMouseLeave);
+            rect.addEventListener("mouseover", onHover.curry(this, `STRIP ${this.name}`, rect));
+            rect.addEventListener("mouseleave", onMouseLeave.curry(this));
             group.appendChild(rect);
 
             let holesGroup = svgGroup("holes");
             for (var n = 0; n < this.holes; n += 1) {
                 let hole = svgCircle(n * kStripSize + kStripSize / 2, kStripSize / 2, kHoleRadius);
-                hole.addEventListener("mouseover", g_onHover.curry(`HOLE ${TREF(offsetRef(this.startRef, 0, n))}`, hole));
-                hole.addEventListener("mouseleave", g_onMouseLeave);
+                hole.addEventListener("mouseover", onHover.curry(this, `HOLE ${TREF(offsetRef(this.startRef, 0, n))}`, hole));
+                hole.addEventListener("mouseleave", onMouseLeave.curry(this));
                 holesGroup.appendChild(hole);
             }
             group.appendChild(holesGroup);
@@ -488,15 +481,15 @@ var Stripboard = (function() {
                                kStripPadding,
                                kStripWidth,
                                this.holes * kStripSize - 2 * kStripPadding);
-            rect.addEventListener("mouseover", g_onHover.curry(`STRIP ${this.name}`, rect));
-            rect.addEventListener("mouseleave", g_onMouseLeave);
+            rect.addEventListener("mouseover", onHover.curry(this, `STRIP ${this.name}`, rect));
+            rect.addEventListener("mouseleave", onMouseLeave.curry(this));
             group.appendChild(rect);
 
             let holesGroup = svgGroup("holes");
             for (var n = 0; n < this.holes; n += 1) {
                 let hole = svgCircle(kStripSize / 2, n * kStripSize + kStripSize / 2, kHoleRadius);
-                hole.addEventListener("mouseover", g_onHover.curry(`HOLE ${TREF(offsetRef(this.startRef, n, 0))}`, hole));
-                hole.addEventListener("mouseleave", g_onMouseLeave);
+                hole.addEventListener("mouseover", onHover.curry(this, `HOLE ${TREF(offsetRef(this.startRef, n, 0))}`, hole));
+                hole.addEventListener("mouseleave", onMouseLeave.curry(this));
                 holesGroup.appendChild(hole);
             }
             group.appendChild(holesGroup);
@@ -601,12 +594,6 @@ var Stripboard = (function() {
         return group;
     }
 
-    function g_getSpanAtRef(ref) {
-        let tref = TREF(ref);
-        return g_refToSpan[tref];
-    }
-
-
     /**************************************************************************
     * Nets  - A net is a single span or a group of spans which are connected
     *         together by wires. A net is essentially a "node" in a circuit
@@ -654,7 +641,7 @@ var Stripboard = (function() {
             return this.board.getStripAtRef(this.fromRef);
         },
         fromSpan: function() {
-            return g_getSpanAtRef(this.fromRef);
+            return this.board.getSpanAtRef(this.fromRef);
         },
         fromPoint: function() {
             return this.board.getPoint(this.fromRef);
@@ -663,7 +650,7 @@ var Stripboard = (function() {
             return this.board.getStripAtRef(this.toRef);
         },
         toSpan: function() {
-            return g_getSpanAtRef(this.toRef);
+            return this.board.getSpanAtRef(this.toRef);
         },
         toPoint: function() {
             return this.board.getPoint(this.toRef);
@@ -743,7 +730,7 @@ var Stripboard = (function() {
             return this.board.getStripAtRef(this.fromRef);
         },
         fromSpan: function() {
-            return g_getSpanAtRef(this.fromRef);
+            return this.board.getSpanAtRef(this.fromRef);
         },
         fromPoint: function() {
             return this.board.getPoint(this.fromRef);
@@ -752,7 +739,7 @@ var Stripboard = (function() {
             return this.board.getStripAtRef(this.toRef);
         },
         toSpan: function() {
-            return g_getSpanAtRef(this.toRef);
+            return this.board.getSpanAtRef(this.toRef);
         },
         toPoint: function() {
             return this.board.getPoint(this.toRef);
@@ -897,8 +884,9 @@ var Stripboard = (function() {
             return pins;
         },
         getSpans: function() {
+            let board = this.board;
             return this.getPins().reduce(function(acc, value) {
-                 acc.push(g_getSpanAtRef(value));
+                 acc.push(board.getSpanAtRef(value));
                  return acc;
             }, []);
         },
@@ -957,8 +945,9 @@ var Stripboard = (function() {
             return pins;
         },
         getSpans: function() {
+            let board = this.board;
             return this.getPins().reduce(function(acc, value) {
-                 acc.push(g_getSpanAtRef(value));
+                 acc.push(board.getSpanAtRef(value));
                  return acc;
             }, []);
         },
@@ -1014,8 +1003,9 @@ var Stripboard = (function() {
             return this.board.getPoint(this.at);
         },
         getSpans: function() {
+            let board = this.board;
             return this.pins.reduce(function(acc, value) {
-                 acc.push(g_getSpanAtRef(value));
+                 acc.push(board.getSpanAtRef(value));
                  return acc;
             }, []);
         },
@@ -1260,12 +1250,7 @@ var Stripboard = (function() {
     
     let BoardPrototype = {
         init: function() {
-            g_boardHeight = this.height;
-            g_boardWidth = this.width;
-
             this.initRows();
-            g_rows = this.rows;
-
             this.initStrips();
         },
 
@@ -1406,7 +1391,6 @@ var Stripboard = (function() {
                 let tref = TREF(ref);
                 // console.log(`setting span at ${tref} to ${span.name}`);
                 this.refToSpan[tref] = span;
-                g_refToSpan[tref] = span;
             }
         },
 
@@ -1568,11 +1552,19 @@ var Stripboard = (function() {
             return this.getRow(pref).getPos(pref.hole);
         },
 
+        // Given a ref, return the strip at that location
         getStripAtRef: function(ref) {
             let tref = TREF(ref);
             return this.refToStrip[tref];
         },
 
+        // Given a ref, return the span at that location
+        getSpanAtRef: function(ref) {
+            let tref = TREF(ref);
+            return this.refToSpan[tref];
+        },
+
+        // Given a ref, return the net at that location
         getNetAtRef: function(ref) {
             let tref = TREF(ref);
             return this.refToNet[tref];
@@ -1683,7 +1675,7 @@ var Stripboard = (function() {
 
         root.appendChild(makeRulers(board.width, board.height));
 
-        g_legend = board.makeLegend();
+        board.makeLegend();
 
         board.svgElement = svgGroup("board front-view");
         board.svgElement.appendChild(board.makeBackground());
