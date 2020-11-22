@@ -215,15 +215,6 @@ var Stripboard = (function() {
     // TODO: Move all of these into a "Board" object so we can have more than one
     // board on a page.
 
-    // The width of the board in inches
-    let g_boardWidth = 0;
-
-    // The height of the board in inches
-    let g_boardHeight = 0;
-
-    // A mapping from row name (e.g. "A" or "AC") to a row object
-    let g_rows = {};
-
     // A mapping from text ref (e.g. "A0") to the strip that contains that ref
     let g_refToStrip = {};
 
@@ -294,24 +285,6 @@ var Stripboard = (function() {
     }
 
 
-    // Given a position with {x,y} in inches, return the ref at that position
-    // or undefined
-    function g_refAtPos(pos) {
-        if (pos.x === undefined || pos.y === undefined ||
-            pos.x < 0 || pos.x > g_boardWidth ||
-            pos.y < 0 || pos.y > g_boardHeight) {
-            return undefined;
-        }
-        let hole = Math.floor(pos.x / kStripSize),
-            r = Math.floor(pos.y / kStripSize),
-            row = makeRowName(r);
-        return {
-            row: row,
-            r: r,
-            hole: hole
-        };
-    }
-
     /******************
     * Rows
     */
@@ -365,28 +338,6 @@ var Stripboard = (function() {
         });
     }
 
-    // Given a ref or a string return the row
-    function g_getRow(ref) {
-        let pref = REF(ref);
-        return g_rows[pref.row];
-    }
-
-    // Given a ref or a string, return the {x,y} coordinates of the center of
-    // the hole at the ref location.
-    function g_getPoint(ref) {
-        let pref = REF(ref);
-        return g_getRow(pref).holePos(pref.hole);
-    }
-
-    function g_HOLE(ref) {
-        let pref = REF(ref);
-        return g_getRow(pref).holePos(pref.hole);
-    }
-
-    function g_POS(ref) {
-        let pref = REF(ref);
-        return g_getRow(pref).getPos(pref.hole);
-    }
 
     /******************
     * Strips - A strip represents a strip of copper on the breadboad / protoboard with
@@ -484,7 +435,7 @@ var Stripboard = (function() {
             if (this.cuts.length > 0) {
                 let cutsGroup = svgGroup("cuts");
                 for (const cut of this.cuts) {
-                    let cutPos = g_POS(cut);
+                    let cutPos = this.board.POS(cut);
                     let cutPath = svgLine(cutPos.x - this.pos.x + kStripSize/2,
                                           0,
                                           cutPos.x - this.pos.x + kStripSize/2,
@@ -506,13 +457,14 @@ var Stripboard = (function() {
             startRef: REF(startRef),
             endRef: endRef,
             holes: holes,
-            pos: g_POS(startRef),
+            pos: board.POS(startRef),
             cuts: [],
             spans: []
         });
 
         for (let i = 0; i < holes; i++) {
             let ref = TREF(offsetRef(startRef, 0, i));
+            board.refToStrip[ref] = strip;
             g_refToStrip[ref] = strip;
         }
 
@@ -555,7 +507,7 @@ var Stripboard = (function() {
             if (this.cuts.length > 0) {
                 let cutsGroup = svgGroup("cuts");
                 for (const cut of this.cuts) {
-                    let cutPos = g_POS(cut);
+                    let cutPos = this.board.POS(cut);
                     let cutPath = svgLine(0,
                                           cutPos.y - this.pos.y + kStripSize/2,
                                           kStripSize,
@@ -577,13 +529,14 @@ var Stripboard = (function() {
             startRef: REF(startRef),
             endRef: endRef,
             holes: holes,
-            pos: g_POS(startRef),
+            pos: board.POS(startRef),
             cuts: [],
             spans: []
         });
 
         for (let i = 0; i < holes; i++) {
             let ref = TREF(offsetRef(startRef, i, 0));
+            board.refToStrip[ref] = strip;
             g_refToStrip[ref] = strip;
         }
 
@@ -630,8 +583,8 @@ var Stripboard = (function() {
             this.wires.push(wire);
         },
         makeSvg: function() {
-            let from = g_HOLE(this.startRef),
-                to = g_HOLE(this.endRef);
+            let from = this.strip.board.HOLE(this.startRef),
+                to = this.strip.board.HOLE(this.endRef);
             return svgLine(from.x, from.y, to.x, to.y);
         }
     };
@@ -714,7 +667,7 @@ var Stripboard = (function() {
             return g_getSpanAtRef(this.fromRef);
         },
         fromPoint: function() {
-            return g_getPoint(this.fromRef);
+            return this.board.getPoint(this.fromRef);
         },
         toStrip: function() {
             return g_getStripAtRef(this.toRef);
@@ -723,14 +676,15 @@ var Stripboard = (function() {
             return g_getSpanAtRef(this.toRef);
         },
         toPoint: function() {
-            return g_getPoint(this.toRef);
+            return this.board.getPoint(this.toRef);
         },
     };
 
-    function createWire(spec) {
+    function createWire(board, spec) {
         let fromRef = parseRef(spec.from);
         let toRef = parseRef(spec.to);
         let wire = extend(Object.create(WirePrototype), {
+            board: board,
             fromRef: fromRef,
             toRef: toRef,
             spec: spec
@@ -802,7 +756,7 @@ var Stripboard = (function() {
             return g_getSpanAtRef(this.fromRef);
         },
         fromPoint: function() {
-            return g_getPoint(this.fromRef);
+            return this.board.getPoint(this.fromRef);
         },
         toStrip: function() {
             return g_getStripAtRef(this.toRef);
@@ -811,7 +765,7 @@ var Stripboard = (function() {
             return g_getSpanAtRef(this.toRef);
         },
         toPoint: function() {
-            return g_getPoint(this.toRef);
+            return this.board.getPoint(this.toRef);
         },
         getSpans: function() {
             return [this.fromSpan(), this.toSpan()];
@@ -819,7 +773,7 @@ var Stripboard = (function() {
         ...ComponentPrototype
     };
 
-    function createComponent(spec) {
+    function createComponent(board, spec) {
         let proto = undefined;
         switch (spec.type) {
         case "capacitor":
@@ -839,12 +793,12 @@ var Stripboard = (function() {
             break;
         case "ic":
             // IC's are different in that they don't have a from -> to shape
-            return createIC(spec);
+            return createIC(board, spec);
         case "transistor":
             // Transistors are also different
-            return createTransistor(spec);
+            return createTransistor(board, spec);
         case "hole":
-            return g_createHole(spec);
+            return createHole(board, spec);
         default:
             console.log("Undefined component type ", spec.type, " in ", spec);
             return undefined;
@@ -852,6 +806,7 @@ var Stripboard = (function() {
         let fromRef = parseRef(spec.from);
         let toRef = parseRef(spec.to);
         return extend(Object.create(proto), {
+            board: board,
             fromRef: fromRef,
             toRef: toRef,
             spec: spec
@@ -958,10 +913,10 @@ var Stripboard = (function() {
             }, []);
         },
         fromPoint: function() {
-            return g_getPoint(this.fromRef);
+            return this.board.getPoint(this.fromRef);
         },
         toPoint: function() {
-            return g_getPoint(this.toRef);
+            return this.board.getPoint(this.toRef);
         },
         makeSvg: function() {
             let from = this.fromPoint();
@@ -998,11 +953,11 @@ var Stripboard = (function() {
         // The IC is defined as being "at" a location which is the top-left
         // pin.  This returns the row that the top left pin is in.
         atRow: function() {
-            return g_getRow(this.at);
+            return this.board.getRow(this.at);
         },
         // Returns the position (in inches) of the center of the "at" pin
         atPos: function() {
-            return g_getPoint(this.at);
+            return this.board.getPoint(this.at);
         },
         getPins: function() {
             let pins = [];
@@ -1039,14 +994,15 @@ var Stripboard = (function() {
             //     x: (pin < this.pinsPerSide ? atPos.x : this.width + atPos.x),
             //     y: atPos.y + ((pin % this.pinsPerSide) * kStripSize)
             // };
-            return g_HOLE(this.pinRef(pin));
+            return this.board.HOLE(this.pinRef(pin));
         },
         ...ComponentPrototype
     };
 
-    function createIC(spec) {
+    function createIC(board, spec) {
         let atRef = parseRef(spec.at);
         return extend(Object.create(ICPrototype), {
+            board: board,
             at: atRef,
             pinCount: spec.pins,
             pinsPerSide: spec.pins / 2,
@@ -1065,7 +1021,7 @@ var Stripboard = (function() {
     let TransistorPrototype = {
         // Returns the position (in inches) of the center of the "at" pin
         atPos: function() {
-            return g_getPoint(this.at);
+            return this.board.getPoint(this.at);
         },
         getSpans: function() {
             return this.pins.reduce(function(acc, value) {
@@ -1078,7 +1034,7 @@ var Stripboard = (function() {
                 pinsGroup = svgGroup("pins"),
                 at = this.atPos();
             for (const pin of this.pins) {
-                let pinPos = g_HOLE(pin);
+                let pinPos = this.board.HOLE(pin);
                 pinsGroup.appendChild(svgCircle(pinPos.x, pinPos.y, kFilledHoleRadius));
             }
             group.appendChild(pinsGroup);
@@ -1107,7 +1063,7 @@ var Stripboard = (function() {
         ...ComponentPrototype
     };
 
-    function createTransistor(spec) {
+    function createTransistor(board, spec) {
         let atRef = parseRef(spec.at),
             orientation = spec.orientation || "N";
         var pins;
@@ -1126,6 +1082,7 @@ var Stripboard = (function() {
             break;
         }
         return extend(Object.create(TransistorPrototype), {
+            board: board,
             at: atRef,
             orientation: orientation,
             pins: pins,
@@ -1202,10 +1159,10 @@ var Stripboard = (function() {
         }
     };
 
-    function g_createHole(spec) {
+    function createHole(board, spec) {
         let pos = undefined;
         if (spec.ref !== undefined) {
-            pos = g_HOLE(spec.ref);
+            pos = board.HOLE(spec.ref);
         }
         if (spec.x !== undefined && spec.y !== undefined) {
             pos = {
@@ -1458,6 +1415,7 @@ var Stripboard = (function() {
             for (let ref = span.startRef; ref !== undefined; ref = span.nextRef(ref)) {
                 let tref = TREF(ref);
                 // console.log(`setting span at ${tref} to ${span.name}`);
+                this.refToSpan[tref] = span;
                 g_refToSpan[tref] = span;
             }
         },
@@ -1509,7 +1467,7 @@ var Stripboard = (function() {
 
             // Iterate wires
             for (const wireSpec of this.circuit.wires) {
-                let wire = createWire(wireSpec);
+                let wire = createWire(this, wireSpec);
                 this.wires.push(wire);
             }
         },
@@ -1518,7 +1476,7 @@ var Stripboard = (function() {
             if (this.circuit.components === undefined) return;
 
             for (const componentSpec of this.circuit.components) {
-                let component = createComponent(componentSpec);
+                let component = createComponent(this, componentSpec);
                 if (component !== undefined) {
                     this.components.push(component);
                     if (component.addToSpans !== undefined) {
@@ -1683,7 +1641,7 @@ var Stripboard = (function() {
             pos.x = this.width - pos.x;
         }
         let posText = `[${pos.x.toFixed(2)},${pos.y.toFixed(2)}]`;
-        let ref = g_refAtPos(pos);
+        let ref = this.refAtPos(pos);
         let net = undefined;
         if (ref !== undefined) {
             let tref = TREF(ref);
