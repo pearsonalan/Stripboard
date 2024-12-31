@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Protoboard</title>
+        <script src="../stripboard.js" lang="javascript"></script>
+        <link href="../reset.css" rel="stylesheet">
+        <link href="../stripboard.css" rel="stylesheet">
+        <link href="../style.css" rel="stylesheet">
+        <style>
+svg#stripboard {
+    width: 640px;
+    height: 440px;
+}
+        </style>
+    </head>
+    <body>
+        <script lang="javascript">
+var CIRCUIT = {
+    layout: "sb4-horiz",
+    wires: [
+        { from: "A0", to: "M0"},
+        { from: "L3", to: "X3"},
+
+        { from: "X7", to: "W7"},
+        { from: "N7", to: "L7"},
+        { from: "Q8", to: "Q12", layer: "back"},
+        { from: "L12", to: "P12"},
+        { from: "E16", to: "L16", layer: "back"},
+        { from: "Q6", to: "Q5", layer: "back"},
+        { from: "P5", to: "K5"},
+        { from: "K1", to: "M1"},
+        { from: "K11", to: "M11"},
+        { from: "L2", to: "E2", layer: "back"},
+        { from: "N6", to: "K6"},
+        { from: "K7", to: "N8", layer: "back"},
+        { from: "E10", to: "L10", layer: "back"},
+        { from: "W8", to: "W9"},
+        { from: "V9", to: "O9"},
+        { from: "N9", to: "K8"},
+        { from: "W6", to: "S4"},
+        { from: "R4", to: "S13", layer: "back"},
+        { from: "R13", to: "K13"},
+        { from: "K17", to: "M17"},
+        { from: "E9", to: "D13"},
+        { from: "C11", to: "A13"},
+    ],
+    nets: {
+        "B5": "SW",
+        "B6": "ENC-A1",
+        "B7": "ENC-B1",
+        "B8": "ENC-A2",
+        "B9": "ENC-B2",
+        "B10": "GND",
+        "B11": "VCC",
+    },
+    components: [
+        {
+            label: "R1",
+            type: "resistor",
+            from: "J5",
+            to: "J1",
+        },
+        {
+            label: "R2",
+            type: "resistor",
+            from: "H5",
+            to: "E5",
+        },
+        {
+            label: "C1",
+            type: "capacitor",
+            from: "D2",
+            to: "D5",
+        },
+
+        {
+            label: "R3",
+            type: "resistor",
+            from: "I1",
+            to: "I6",
+        },
+        {
+            label: "R4",
+            type: "resistor",
+            from: "H6",
+            to: "E6",
+        },
+        {
+            label: "C2",
+            type: "capacitor",
+            from: "C2",
+            to: "C6",
+        },
+
+        {
+            label: "R5",
+            type: "resistor",
+            from: "I11",
+            to: "I7",
+        },
+        {
+            label: "R6",
+            type: "resistor",
+            from: "H7",
+            to: "E7",
+        },
+        {
+            label: "C3",
+            type: "capacitor",
+            from: "C7",
+            to: "C10",
+        },
+
+        {
+            label: "R7",
+            type: "resistor",
+            from: "J8",
+            to: "J11",
+        },
+        {
+            label: "R8",
+            type: "resistor",
+            from: "E8",
+            to: "H8",
+        },
+        {
+            label: "C4",
+            type: "capacitor",
+            from: "D8",
+            to: "D10",
+        },
+
+        {
+            label: "R9",
+            type: "resistor",
+            from: "I13",
+            to: "I17",
+        },
+        {
+            label: "R10",
+            type: "resistor",
+            from: "H13",
+            to: "E13",
+        },
+        {
+            label: "C5",
+            type: "capacitor",
+            from: "C13",
+            to: "C16",
+        },
+
+
+        {
+            type: "header",
+            from: "B5",
+            to: "B11",
+        },
+        {
+            type: "header",
+            from: "O6",
+            to: "O8",
+        },
+        {
+            type: "header",
+            from: "P6",
+            to: "P6",
+        },
+        {
+            type: "header",
+            from: "P8",
+            to: "P8",
+        },
+        {
+            type: "header",
+            from: "V6",
+            to: "V8",
+        },
+    ]
+};
+
+window.addEventListener("DOMContentLoaded", function() {
+    Stripboard.init($ID("stripboard"), CIRCUIT);
+});
+        </script>
+        <h1>SB4 Protoboard</h1>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            id="stripboard" class="stripboard"></svg>
+    </body>
+</html>
